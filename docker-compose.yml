@@ -1,0 +1,12 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_ESPN_SITE_API_BASE_URL: ${VITE_ESPN_SITE_API_BASE_URL:-https://site.api.espn.com/apis/site/v2}
+        VITE_ESPN_CORE_API_BASE_URL: ${VITE_ESPN_CORE_API_BASE_URL:-https://site.api.espn.com/apis/v2}
+        VITE_ESPN_STANDINGS_API_BASE_URL: ${VITE_ESPN_STANDINGS_API_BASE_URL:-https://site.api.espn.com/apis/v2}
+    image: 90f-web:latest
+    ports:
+      - "8080:80"
+    restart: unless-stopped
