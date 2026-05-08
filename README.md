@@ -130,7 +130,7 @@ Recommended Vercel settings:
 
 Add the `VITE_ESPN_*` variables in Vercel Project Settings if you need to override the defaults from `.env.example`.
 
-This project is a static SPA. Vercel should serve `dist` and route browser navigation back to the app entry automatically for Vite projects.
+This project is a static SPA using Vue Router history mode. The root `vercel.json` rewrites all routes to `/index.html`, so direct visits and refreshes on client routes such as `/fixtures` and `/match/esp.1/748491` do not return 404.
 
 ## GitHub
 

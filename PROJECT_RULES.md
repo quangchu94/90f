@@ -417,6 +417,30 @@ docker build -t 90f-web `
   .
 ```
 
+## Vercel Deployment
+
+The app uses Vue Router history mode, so Vercel must be configured with an SPA fallback.
+
+Rules:
+
+- Keep `vercel.json` at the repo root.
+- Rewrite all non-asset routes to `/index.html` so direct visits and refreshes on client routes work.
+- Direct URLs such as `/fixtures` and `/match/:leagueSlug/:eventId` must not return 404 on Vercel.
+- Do not switch to hash routing just to solve static hosting refresh issues.
+
+Required `vercel.json`:
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
 ## Roadmap
 
 ### Phase 1: MVP - Scores & Fixtures
