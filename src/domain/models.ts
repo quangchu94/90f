@@ -21,6 +21,47 @@ export interface LeagueSummary {
   shortName?: string;
 }
 
+export interface StandingGroup {
+  id: string;
+  name: string;
+  rows: StandingRow[];
+}
+
+export interface StandingRow {
+  id: string;
+  rank?: number;
+  team: TeamSummary;
+  played?: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  goalDifference?: number;
+  points?: number;
+  form?: string;
+}
+
+export interface TeamDetail extends TeamSummary {
+  leagueSlug: string;
+  location?: string;
+  venue?: string;
+  color?: string;
+}
+
+export interface PlayerSummary {
+  id: string;
+  name: string;
+  displayName: string;
+  jersey?: string;
+  position?: string;
+  age?: number;
+  nationality?: string;
+  headshotUrl?: string;
+}
+
+export interface TeamScheduleMatch extends FootballMatch {}
+
 export type MatchEventType = 'goal' | 'red_card';
 
 export interface MatchEvent {
@@ -38,6 +79,7 @@ export interface FootballMatch {
   id: string;
   leagueSlug: string;
   leagueName: string;
+  leagueShortName?: string;
   kickoff: string;
   status: MatchStatus;
   statusText: string;

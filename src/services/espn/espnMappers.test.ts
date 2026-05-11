@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { mapScoreboardResponse, mapSummaryResponse, normalizeStatus } from './espnMappers';
-import type { EspnScoreboardResponse, EspnSummaryResponse } from './espnTypes';
+import {
+  mapRosterResponse,
+  mapScoreboardResponse,
+  mapStandingsResponse,
+  mapSummaryResponse,
+  mapTeamDetailResponse,
+  mapTeamScheduleResponse,
+  mapTeamsResponse,
+  normalizeStatus
+} from './espnMappers';
+import type {
+  EspnRosterResponse,
+  EspnScoreboardResponse,
+  EspnStandingsResponse,
+  EspnSummaryResponse,
+  EspnTeamScheduleResponse,
+  EspnTeamsResponse
+} from './espnTypes';
 
 describe('espn mappers', () => {
   it('maps scheduled matches without scores', () => {
@@ -40,6 +56,7 @@ describe('espn mappers', () => {
   it('normalizes postponed and unknown statuses', () => {
     expect(normalizeStatus({ type: { id: '6', description: 'Postponed' } })).toBe('postponed');
     expect(normalizeStatus({ type: { state: 'mystery' } })).toBe('unknown');
+    expect(normalizeStatus({ type: { state: 'mystery' } }, true)).toBe('finished');
   });
 
   it('maps summary goal and red-card key events', () => {
@@ -67,12 +84,182 @@ describe('espn mappers', () => {
     expect(detail.kickoff).toBe('2026-05-08T19:00Z');
     expect(detail.events).toEqual([]);
   });
+
+  it('maps standings rows with common soccer stats', () => {
+    const groups = mapStandingsResponse(makeStandings());
+
+    expect(groups[0].rows[0]).toMatchObject({
+      rank: 1,
+      team: { name: 'Arsenal' },
+      played: 38,
+      wins: 28,
+      draws: 6,
+      losses: 4,
+      goalDifference: 62,
+      points: 90
+    });
+  });
+
+  it('sorts standings rows by ESPN rank and keeps unranked rows last', () => {
+    const groups = mapStandingsResponse({
+      standings: {
+        entries: [
+          makeStandingEntry('4', 'Fourth', 4),
+          makeStandingEntry('1', 'First', 1),
+          makeStandingEntry('x', 'Unranked'),
+          makeStandingEntry('3', 'Third', 3),
+          makeStandingEntry('2', 'Second', 2)
+        ]
+      }
+    });
+
+    expect(groups[0].rows.map((row) => row.team.name)).toEqual([
+      'First',
+      'Second',
+      'Third',
+      'Fourth',
+      'Unranked'
+    ]);
+    expect(groups[0].rows.map((row) => row.rank)).toEqual([1, 2, 3, 4, undefined]);
+  });
+
+  it('places rank four right after rank one when ranks two and three are missing', () => {
+    const groups = mapStandingsResponse({
+      standings: {
+        entries: [
+          makeStandingEntry('4', 'Fourth', 4),
+          makeStandingEntry('1', 'First', 1)
+        ]
+      }
+    });
+
+    expect(groups[0].rows.map((row) => row.rank)).toEqual([1, 4]);
+  });
+
+  it('parses standings rank from ordinal display values', () => {
+    const groups = mapStandingsResponse({
+      standings: {
+        entries: [
+          makeStandingEntry('4', 'Fourth', undefined, '4th'),
+          makeStandingEntry('1', 'First', undefined, '1st')
+        ]
+      }
+    });
+
+    expect(groups[0].rows.map((row) => row.rank)).toEqual([1, 4]);
+    expect(groups[0].rows.map((row) => row.team.name)).toEqual(['First', 'Fourth']);
+  });
+
+  it('maps grouped standings', () => {
+    const groups = mapStandingsResponse({
+      children: [{ id: 'a', name: 'Group A', standings: makeStandings().standings }]
+    });
+
+    expect(groups[0].name).toBe('Group A');
+    expect(groups[0].rows).toHaveLength(1);
+  });
+
+  it('maps teams and missing logos safely', () => {
+    const teams = mapTeamsResponse(makeTeams(), 'eng.1');
+
+    expect(teams[0]).toMatchObject({
+      id: '359',
+      leagueSlug: 'eng.1',
+      name: 'Arsenal',
+      logoUrl: undefined
+    });
+  });
+
+  it('maps core team detail venue fields', () => {
+    const team = mapTeamDetailResponse(
+      {
+        id: '359',
+        displayName: 'Arsenal',
+        shortDisplayName: 'Arsenal',
+        venue: { fullName: 'Emirates Stadium' }
+      },
+      'eng.1',
+      '359'
+    );
+
+    expect(team).toMatchObject({
+      id: '359',
+      name: 'Arsenal',
+      venue: 'Emirates Stadium'
+    });
+  });
+
+  it('maps roster groups with fallback positions', () => {
+    const roster = mapRosterResponse(makeRoster());
+
+    expect(roster[0]).toMatchObject({
+      displayName: 'Bukayo Saka',
+      jersey: '7',
+      position: 'Forward',
+      headshotUrl: 'saka-alt.png'
+    });
+  });
+
+  it('maps team schedule through normalized match models', () => {
+    const matches = mapTeamScheduleResponse(makeScoreboard('post', { value: 2 }, 1, true), 'eng.1');
+
+    expect(matches[0]).toMatchObject({
+      id: '401',
+      leagueSlug: 'eng.1',
+      homeTeam: { name: 'Arsenal' },
+      homeScore: 2,
+      awayScore: 1
+    });
+  });
+
+  it('keeps per-match league information in team schedules', () => {
+    const matches = mapTeamScheduleResponse(makeMultiLeagueSchedule(), 'fra.1');
+
+    expect(matches.map((match) => [match.id, match.leagueSlug, match.leagueName])).toEqual([
+      ['501', 'fra.1', 'French Ligue 1'],
+      ['601', 'uefa.champions', 'UEFA Champions League']
+    ]);
+    expect(matches.map((match) => match.leagueShortName)).toEqual(['Ligue 1', 'UCL']);
+  });
+
+  it('dedupes team schedule matches and keeps the more complete event', () => {
+    const matches = mapTeamScheduleResponse(makeDuplicateSchedule(), 'fra.1');
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({
+      id: '701',
+      leagueSlug: 'uefa.champions',
+      leagueName: 'UEFA Champions League',
+      homeScore: 2,
+      awayScore: 1,
+      venue: 'Parc des Princes'
+    });
+  });
+
+  it('marks scored matches as finished when ESPN status is unknown', () => {
+    const matches = mapTeamScheduleResponse(makeScoreboard('unknown', '2', '1'), 'eng.1');
+
+    expect(matches[0]).toMatchObject({
+      status: 'finished',
+      homeScore: 2,
+      awayScore: 1
+    });
+  });
 });
+
+function makeStandingEntry(id: string, name: string, rank?: number, rankDisplayValue?: string) {
+  return {
+    team: { id, displayName: name, shortDisplayName: name },
+    stats: rank === undefined && rankDisplayValue === undefined
+      ? []
+      : [{ name: 'rank', value: rank, displayValue: rankDisplayValue }]
+  };
+}
 
 function makeScoreboard(
   state: string,
-  homeScore = '',
-  awayScore = '',
+  homeScore: string | number | { value?: number; displayValue?: string } = '',
+  awayScore: string | number | { value?: number; displayValue?: string } = '',
   completed = false
 ): EspnScoreboardResponse {
   return {
@@ -95,6 +282,110 @@ function makeScoreboard(
                 homeAway: 'away',
                 score: awayScore,
                 team: { id: '2', displayName: 'Chelsea', shortDisplayName: 'Chelsea' }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function makeMultiLeagueSchedule(): EspnTeamScheduleResponse {
+  return {
+    events: [
+      {
+        id: '501',
+        date: '2026-05-08T14:00:00Z',
+        leagues: [{ slug: 'fra.1', name: 'French Ligue 1' }],
+        status: { type: { state: 'post', completed: true } },
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: 'home',
+                score: '1',
+                team: { id: '160', displayName: 'PSG', shortDisplayName: 'PSG' }
+              },
+              {
+                homeAway: 'away',
+                score: '0',
+                team: { id: '2', displayName: 'Monaco', shortDisplayName: 'Monaco' }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: '601',
+        date: '2026-05-09T19:00:00Z',
+        leagues: [{ slug: 'uefa.champions', name: 'UEFA Champions League' }],
+        status: { type: { state: 'pre', description: 'Scheduled' } },
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: 'home',
+                team: { id: '160', displayName: 'PSG', shortDisplayName: 'PSG' }
+              },
+              {
+                homeAway: 'away',
+                team: { id: '86', displayName: 'Real Madrid', shortDisplayName: 'Real Madrid' }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function makeDuplicateSchedule(): EspnTeamScheduleResponse {
+  return {
+    leagues: [{ slug: 'fra.1', name: 'French Ligue 1' }],
+    events: [
+      {
+        id: '701',
+        date: '2026-05-07T14:00:00Z',
+        status: { type: { state: 'post', completed: true } },
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: 'home',
+                team: { id: '160', displayName: 'PSG', shortDisplayName: 'PSG' }
+              },
+              {
+                homeAway: 'away',
+                team: { id: '2', displayName: 'Opponent', shortDisplayName: 'OPP' }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: '701',
+        date: '2026-05-07T14:00:00Z',
+        leagues: [{ slug: 'uefa.champions', name: 'UEFA Champions League' }],
+        status: { type: { state: 'post', completed: true } },
+        competitions: [
+          {
+            venue: { fullName: 'Parc des Princes' },
+            competitors: [
+              {
+                homeAway: 'home',
+                score: '2',
+                team: {
+                  id: '160',
+                  displayName: 'PSG',
+                  shortDisplayName: 'PSG',
+                  logo: 'psg.png'
+                }
+              },
+              {
+                homeAway: 'away',
+                score: '1',
+                team: { id: '86', displayName: 'Real Madrid', shortDisplayName: 'Real Madrid' }
               }
             ]
           }
@@ -149,6 +440,68 @@ function makeSummaryWithEvents(): EspnSummaryResponse {
         team: { id: '86', displayName: 'Real Madrid' },
         participants: [{ athlete: { id: '124562', displayName: 'Eduardo Camavinga' } }],
         text: 'Eduardo Camavinga is shown the red card.'
+      }
+    ]
+  };
+}
+
+function makeStandings(): EspnStandingsResponse {
+  return {
+    standings: {
+      entries: [
+        {
+          team: { id: '359', displayName: 'Arsenal', shortDisplayName: 'Arsenal' },
+          stats: [
+            { name: 'rank', value: 1 },
+            { name: 'gamesPlayed', value: 38 },
+            { name: 'wins', value: 28 },
+            { name: 'ties', value: 6 },
+            { name: 'losses', value: 4 },
+            { name: 'differential', value: 62 },
+            { name: 'points', value: 90 }
+          ]
+        }
+      ]
+    }
+  };
+}
+
+function makeTeams(): EspnTeamsResponse {
+  return {
+    sports: [
+      {
+        leagues: [
+          {
+            teams: [
+              {
+                team: {
+                  id: '359',
+                  displayName: 'Arsenal',
+                  shortDisplayName: 'Arsenal',
+                  abbreviation: 'ARS'
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function makeRoster(): EspnRosterResponse {
+  return {
+    athletes: [
+      {
+        position: 'Forward',
+        items: [
+          {
+            id: '1',
+            displayName: 'Bukayo Saka',
+            jersey: '7',
+            headshots: [{ href: 'saka-alt.png' }]
+          }
+        ]
       }
     ]
   };

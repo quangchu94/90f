@@ -1,7 +1,17 @@
 import { mount, RouterLinkStub } from '@vue/test-utils';
 import { computed } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MatchDetailPage from './MatchDetailPage.vue';
+
+const routerMock = vi.hoisted(() => ({
+  route: {
+    query: {} as Record<string, string>
+  }
+}));
+
+vi.mock('vue-router', () => ({
+  useRoute: () => routerMock.route
+}));
 
 vi.mock('@/composables/useMatchSummary', () => ({
   useMatchSummary: () => ({
@@ -49,6 +59,10 @@ vi.mock('@/composables/useMatchSummary', () => ({
 }));
 
 describe('MatchDetailPage', () => {
+  beforeEach(() => {
+    routerMock.route.query = {};
+  });
+
   it('places match events before match info and broadcast sections', () => {
     const wrapper = mountPage();
     const text = wrapper.text();
@@ -64,6 +78,24 @@ describe('MatchDetailPage', () => {
     expect(rows[0].find('[data-testid="home-event"]').text()).toContain('Ante Budimir');
     expect(rows[0].find('[data-testid="event-badge"]').text()).toContain('Bàn thắng');
     expect(rows[1].find('[data-testid="away-event"]').text()).toContain('Robert Lewandowski');
+  });
+
+  it('uses returnTo query for the back link', () => {
+    routerMock.route.query = { returnTo: '/team/esp.1/83?tab=results&league=esp.1' };
+
+    const wrapper = mountPage();
+
+    expect(wrapper.findComponent(RouterLinkStub).props('to')).toBe(
+      '/team/esp.1/83?tab=results&league=esp.1'
+    );
+  });
+
+  it('falls back to fixtures for unsafe back targets', () => {
+    routerMock.route.query = { returnTo: 'https://example.com' };
+
+    const wrapper = mountPage();
+
+    expect(wrapper.findComponent(RouterLinkStub).props('to')).toBe('/fixtures');
   });
 });
 

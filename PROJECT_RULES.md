@@ -86,6 +86,7 @@ Use these endpoint families:
 - Teams: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams`
 - Match summary: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/summary?event={eventId}`
 - Standings: `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings`
+- Team fixture schedule fallback: `https://site.web.api.espn.com/apis/site/v2/sports/soccer/all/teams/{teamId}/schedule?fixture=true`
 
 Important API rules:
 
@@ -105,6 +106,11 @@ CORS risk reduction:
 
 - Keep every ESPN request inside the ESPN service layer so a future proxy can be added without changing components.
 - Store ESPN base URLs in environment variables such as `VITE_ESPN_SITE_API_BASE_URL`, `VITE_ESPN_CORE_API_BASE_URL`, and `VITE_ESPN_STANDINGS_API_BASE_URL`.
+- Use same-origin read-through proxy paths by default after CORS is observed: `/api/espn/site`, `/api/espn/v2`, and `/api/espn/core`.
+- Proxy `/api/espn/site` to `https://site.api.espn.com/apis/site/v2`.
+- Proxy `/api/espn/v2` to `https://site.api.espn.com/apis/v2`.
+- Proxy `/api/espn/core` to `https://sports.core.api.espn.com/v2`.
+- Proxy `/api/espn/web` to `https://site.web.api.espn.com/apis/site/v2`.
 - Implement one fetch client interface, for example `EspnHttpClient`, so the app can switch from direct ESPN calls to a CDN/proxy endpoint later.
 - Detect CORS/network failures and show a friendly Vietnamese message instead of a broken page.
 - Keep previously fetched data visible when refetch fails.
@@ -190,6 +196,7 @@ Mapping rules:
 - Normalize dates to ISO strings internally.
 - Format dates and times only at the UI boundary.
 - Keep fallback labels in Vietnamese for visible UI.
+- If ESPN returns an unknown or missing event status but both team scores are present, normalize the match as `finished` so result lists and badges show `Kết thúc`.
 - Do not mention timezone in general page helper copy; show timezone correctness through formatted match date/time.
 - Avoid leaking ESPN-specific naming into page components.
 
@@ -229,6 +236,8 @@ UI rules:
 - Use compact match rows/cards with stable heights, team crests, kickoff/status, team names, scores, and a clear tap target.
 - On mobile, prioritize date tabs, league filters, match list, and readable team names.
 - On desktop, use max-width content, optional two-column layouts for details, and denser tables.
+- Standings with multiple groups must use a shared fixed column layout so columns align across every group table.
+- Standings rows must be sorted by ESPN-provided `row.rank` in ascending order at both mapping and render boundaries, and the UI must display that same rank; do not replace it with `index + 1`. Do not insert blank rows for missing ranks: if rank 4 is present but ranks 2 and 3 are absent, rank 4 appears immediately after rank 1. Rows without rank stay after ranked rows in ESPN response order.
 - Buttons and filters must have visible active, hover, focus, loading, and disabled states.
 - Text must not overflow buttons, cards, tabs, or match rows.
 - Use icons where helpful for calendar, trophy, search, chevron, star/favorite, refresh, and status.
@@ -244,6 +253,7 @@ Recommended routes:
 - `/match/:leagueSlug/:eventId` match detail
 - `/standings/:leagueSlug` league standings
 - `/teams/:leagueSlug` team list
+- `/team/:leagueSlug/:teamId` team detail with overview, schedule, roster, and favorite action
 
 Navigation should be minimal:
 
@@ -260,6 +270,13 @@ Use TanStack Query:
 - Combined results/fixtures screens should query each selected league/date pair separately and filter normalized matches by mode.
 - `Kết quả` should show only finished matches for today and previous days in GMT+7.
 - `Lịch đấu` should show only scheduled matches for today and future days in GMT+7.
+- Team detail schedule must use the same status split as the fixtures page: `Kết quả` for finished matches and `Lịch đấu` for scheduled matches. Team match rows should show the kickoff date, time/status display, and the league short name for each match when available.
+- Team detail schedule/results must aggregate matches from every supported league the team participates in, not only the `leagueSlug` in the route. League-specific schedule request failures must not fail the full team schedule while at least one source returns data.
+- Team detail schedule must offer a league filter with `Tất cả` as the default. The filter applies to both `Kết quả` and `Lịch đấu` and should be built from leagues present in the team's schedule data.
+- Team detail tab and league-filter state must be reflected in route query params so browser back and app back restore the previous team schedule view.
+- Team detail `Kết quả` must sort finished matches newest first. Team detail `Lịch đấu` must sort scheduled matches oldest first so the nearest upcoming match appears first.
+- ESPN team schedule responses must not be assumed to include stable `response.leagues` or `event.leagues` fields. League-specific team schedule events must use the requested endpoint league as their source league; all-fixture team schedule events must infer league from `event.season.displayName` or `event.seasonType.name`.
+- Team schedule events with unsupported or unknown competitions must not fallback to the route league; hide them until the app supports that competition.
 - Results and fixtures must group matches by `kickoff` converted to `Asia/Ho_Chi_Minh`, not by the ESPN scoreboard endpoint date.
 - Multi-day scoreboard screens should fetch the target local dates plus the adjacent previous source date so late European kickoffs are grouped under the correct GMT+7 day.
 - Date sections with no matches after mode/status/local-date filtering should not be rendered.
@@ -276,6 +293,9 @@ Suggested stale times:
 - Finished past matches: 10-30 minutes
 - Teams and league metadata: 24 hours
 - Standings: 5-15 minutes
+- Teams, team detail, and roster: 24 hours
+- Team schedule: 5-15 minutes
+- Team schedule should combine all supported league team schedule endpoints for results with the `site.web.api.espn.com` fixture endpoint for upcoming matches when ESPN omits future fixtures from league-specific endpoints. The all-fixture endpoint must not overwrite a concrete league from a league-specific schedule with a generic or incorrect league.
 
 Error handling:
 
@@ -301,8 +321,10 @@ Do not store fetched ESPN responses in Pinia. TanStack Query owns remote cache.
 Client storage rules:
 
 - Persist lightweight UI preferences only, such as selected leagues.
+- Persist favorite teams in localStorage with lightweight `{ leagueSlug, teamId }` entries.
 - Do not persist ESPN API responses in client storage.
 - Restore selected leagues from storage during store initialization.
+- Restore favorite teams from storage during preference store initialization.
 - Keep at least one selected league active in the UI.
 
 ## TypeScript Rules
@@ -404,16 +426,18 @@ Environment rules:
 
 - Vite environment variables are build-time values, not runtime browser values.
 - Pass ESPN base URLs as Docker build args when they need to change.
+- Default Docker and Vercel builds should use same-origin proxy paths instead of direct ESPN URLs.
 - Keep defaults aligned with `.env.example`.
-- Do not add a backend/proxy to the Docker setup unless CORS or rate-limit testing proves it is required.
+- Use Nginx proxy locations for `/api/espn/site`, `/api/espn/v2`, `/api/espn/core`, and `/api/espn/web` when serving the static app through Docker.
 
 Example custom build args:
 
 ```bash
 docker build -t 90f-web `
-  --build-arg VITE_ESPN_SITE_API_BASE_URL=https://site.api.espn.com/apis/site/v2 `
-  --build-arg VITE_ESPN_CORE_API_BASE_URL=https://site.api.espn.com/apis/v2 `
-  --build-arg VITE_ESPN_STANDINGS_API_BASE_URL=https://site.api.espn.com/apis/v2 `
+  --build-arg VITE_ESPN_SITE_API_BASE_URL=/api/espn/site `
+  --build-arg VITE_ESPN_CORE_API_BASE_URL=/api/espn/core `
+  --build-arg VITE_ESPN_STANDINGS_API_BASE_URL=/api/espn/v2 `
+  --build-arg VITE_ESPN_WEB_API_BASE_URL=/api/espn/web `
   .
 ```
 
@@ -424,15 +448,45 @@ The app uses Vue Router history mode, so Vercel must be configured with an SPA f
 Rules:
 
 - Keep `vercel.json` at the repo root.
+- Keep ESPN proxy rewrites before the SPA fallback rewrite.
+- Rewrite `/api/espn/site/:path*`, `/api/espn/v2/:path*`, `/api/espn/core/:path*`, and `/api/espn/web/:path*` to ESPN before rewriting app routes to `/index.html`.
 - Rewrite all non-asset routes to `/index.html` so direct visits and refreshes on client routes work.
 - Direct URLs such as `/fixtures` and `/match/:leagueSlug/:eventId` must not return 404 on Vercel.
 - Do not switch to hash routing just to solve static hosting refresh issues.
+- Match detail links opened from team pages should include a safe same-origin `returnTo` query, and the match detail back button should use that target before falling back to `/fixtures`.
 
 Required `vercel.json`:
 
 ```json
 {
+  "headers": [
+    {
+      "source": "/api/espn/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=60, stale-while-revalidate=300"
+        }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/espn/site/:path*",
+      "destination": "https://site.api.espn.com/apis/site/v2/:path*"
+    },
+    {
+      "source": "/api/espn/v2/:path*",
+      "destination": "https://site.api.espn.com/apis/v2/:path*"
+    },
+    {
+      "source": "/api/espn/core/:path*",
+      "destination": "https://sports.core.api.espn.com/v2/:path*"
+    },
+    {
+      "source": "/api/espn/web/:path*",
+      "destination": "https://site.web.api.espn.com/apis/site/v2/:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
@@ -475,6 +529,22 @@ Features:
 - Roster.
 - Team-specific schedule.
 - Favorite teams.
+
+Implementation rules:
+
+- Standings must use `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings`.
+- Team list, roster, and team schedule should use site v2 team endpoints.
+- Team fixture data for upcoming soccer matches may use `site.web.api.espn.com/apis/site/v2/sports/soccer/all/teams/{teamId}/schedule?fixture=true` when the site v2 league endpoint omits future matches.
+- Team schedule/results should aggregate site v2 schedule responses across all supported leagues and ignore leagues where the team has no schedule data, as long as another source succeeds.
+- Team schedule mappers should keep per-match league short names, preferring app-supported league metadata such as `EPL`, `UCL`, and `UEL`, then ESPN abbreviations, then full names.
+- Team schedule league attribution must never fallback unknown all-fixture events to the current route league; unsupported fixtures such as club friendlies should be filtered out rather than shown under the wrong competition.
+- Team detail should prefer Core API `https://sports.core.api.espn.com/v2/sports/soccer/leagues/{league}/teams/{teamId}` for venue data, with site v2 fallback.
+- Team schedule mappers must parse score values from string, number, and nested ESPN score shapes.
+- Player images must use ESPN headshot fallback fields when available and fall back to initials when missing.
+- Routes are `/standings/:leagueSlug`, `/teams/:leagueSlug`, and `/team/:leagueSlug/:teamId`.
+- Team detail pages must degrade gracefully when roster or schedule data is missing.
+- Favorite teams are local-only and must be persisted in client storage.
+- Do not add player detail pages in Phase 2 unless explicitly requested.
 
 Done when:
 

@@ -1,7 +1,11 @@
 import { mount, RouterLinkStub } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MatchRow from './MatchRow.vue';
 import type { FootballMatch } from '@/domain/models';
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ fullPath: '/team/eng.1/359?tab=results&league=uefa.champions' })
+}));
 
 describe('MatchRow', () => {
   it('renders scheduled match with fallback score', () => {
@@ -27,6 +31,37 @@ describe('MatchRow', () => {
 
     expect(live.text()).toContain('Live');
     expect(finished.text()).toContain('FT');
+  });
+
+  it('renders kickoff date when requested', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: makeMatch('scheduled'), showDate: true },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+
+    expect(wrapper.text()).toContain('08/05/2026');
+  });
+
+  it('renders league short name when requested', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: makeMatch('scheduled'), showLeague: true },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+
+    expect(wrapper.text()).toContain('EPL');
+    expect(wrapper.text()).not.toContain('Premier League');
+  });
+
+  it('passes the current route as return target to match detail', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: makeMatch('scheduled') },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+
+    expect(wrapper.findComponent(RouterLinkStub).props('to')).toMatchObject({
+      name: 'match-detail',
+      query: { returnTo: '/team/eng.1/359?tab=results&league=uefa.champions' }
+    });
   });
 });
 

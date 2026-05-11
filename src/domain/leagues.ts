@@ -16,3 +16,16 @@ export const DEFAULT_LEAGUE_SLUGS = ['eng.1', 'esp.1', 'uefa.champions'];
 export function getLeagueBySlug(slug: string): LeagueSummary {
   return INITIAL_LEAGUES.find((league) => league.slug === slug) ?? { slug, name: slug };
 }
+
+export function getLeagueShortName(
+  slug: string,
+  abbreviation?: string,
+  fallbackName?: string
+): string {
+  const league = INITIAL_LEAGUES.find((item) => item.slug === slug);
+  return league?.shortName ?? abbreviation ?? fallbackName ?? league?.name ?? slug;
+}
+
+export function isSupportedLeagueSlug(slug: string | undefined): slug is string {
+  return Boolean(slug && INITIAL_LEAGUES.some((league) => league.slug === slug));
+}

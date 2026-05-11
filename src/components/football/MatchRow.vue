@@ -1,9 +1,11 @@
 <template>
   <RouterLink
-    :to="{ name: 'match-detail', params: { leagueSlug: match.leagueSlug, eventId: match.id } }"
+    :to="matchDetailRoute"
     class="grid min-h-24 grid-cols-[3.75rem_1fr_auto] items-center gap-3 rounded border border-app-border bg-app-surface px-3 py-3 transition hover:border-app-accent/60 hover:bg-app-elevated focus:outline-none focus:ring-2 focus:ring-app-accent sm:grid-cols-[5rem_1fr_auto]"
   >
     <div class="text-center">
+      <p v-if="showLeague" class="line-clamp-2 text-[0.65rem] font-semibold leading-tight text-app-secondary">{{ leagueLabel }}</p>
+      <p v-if="showDate" class="text-xs font-semibold text-app-secondary">{{ dateLabel }}</p>
       <p class="text-sm font-bold text-app-amber">{{ timeLabel }}</p>
       <StatusBadge class="mt-2" :status="match.status" :label="compactStatusLabel" />
     </div>
@@ -28,15 +30,34 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import type { FootballMatch } from '@/domain/models';
+import { getLeagueShortName } from '@/domain/leagues';
 import { STATUS_LABELS } from '@/domain/status';
-import { formatKickoffTime } from '@/utils/date';
+import { formatKickoffDate, formatKickoffTime } from '@/utils/date';
 import StatusBadge from './StatusBadge.vue';
 import TeamLogo from './TeamLogo.vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   match: FootballMatch;
-}>();
+  showDate?: boolean;
+  showLeague?: boolean;
+}>(), {
+  showDate: false,
+  showLeague: false
+});
+const route = useRoute();
+
+const matchDetailRoute = computed(() => ({
+  name: 'match-detail',
+  params: { leagueSlug: props.match.leagueSlug, eventId: props.match.id },
+  query: route?.fullPath ? { returnTo: route.fullPath } : undefined
+}));
+
+const dateLabel = computed(() => formatKickoffDate(props.match.kickoff));
+const leagueLabel = computed(() =>
+  props.match.leagueShortName ?? getLeagueShortName(props.match.leagueSlug, undefined, props.match.leagueName)
+);
 
 const timeLabel = computed(() => {
   if (props.match.status === 'finished') {

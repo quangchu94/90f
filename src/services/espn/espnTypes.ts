@@ -6,16 +6,33 @@ export interface EspnTeam {
   id?: string;
   uid?: string;
   displayName?: string;
+  name?: string;
   shortDisplayName?: string;
   abbreviation?: string;
+  location?: string;
+  color?: string;
   logo?: string;
   logos?: EspnLogo[];
+  venue?: {
+    $ref?: string;
+    fullName?: string;
+    displayName?: string;
+    name?: string;
+  };
+  recordSummary?: string;
 }
 
 export interface EspnCompetitor {
   id?: string;
   homeAway?: 'home' | 'away';
-  score?: string;
+  score?: string | number | {
+    value?: number;
+    displayValue?: string;
+  };
+  scoreValue?: number;
+  curatedRank?: {
+    current?: number;
+  };
   team?: EspnTeam;
 }
 
@@ -95,6 +112,14 @@ export interface EspnEvent {
   date?: string;
   name?: string;
   shortName?: string;
+  season?: {
+    name?: string;
+    displayName?: string;
+  };
+  seasonType?: {
+    name?: string;
+    displayName?: string;
+  };
   status?: EspnEventStatus;
   competitions?: EspnCompetition[];
   leagues?: EspnLeague[];
@@ -124,4 +149,115 @@ export interface EspnSummaryResponse {
   }>;
   keyEvents?: EspnMatchEvent[];
   commentary?: EspnCommentaryItem[];
+}
+
+export interface EspnStandingStat {
+  name?: string;
+  displayName?: string;
+  shortDisplayName?: string;
+  abbreviation?: string;
+  type?: string;
+  value?: number;
+  displayValue?: string;
+  summary?: string;
+}
+
+export interface EspnStandingEntry {
+  team?: EspnTeam;
+  stats?: EspnStandingStat[];
+}
+
+export interface EspnStandingNode {
+  id?: string;
+  name?: string;
+  displayName?: string;
+  standings?: {
+    entries?: EspnStandingEntry[];
+  };
+}
+
+export interface EspnStandingsResponse {
+  standings?: {
+    entries?: EspnStandingEntry[];
+  };
+  children?: EspnStandingNode[];
+}
+
+export interface EspnTeamsResponse {
+  sports?: Array<{
+    leagues?: Array<{
+      teams?: Array<{
+        team?: EspnTeam;
+      }>;
+    }>;
+  }>;
+  teams?: Array<{
+    team?: EspnTeam;
+  }>;
+}
+
+export interface EspnTeamDetailResponse {
+  team?: EspnTeam;
+  id?: string;
+  uid?: string;
+  displayName?: string;
+  name?: string;
+  shortDisplayName?: string;
+  abbreviation?: string;
+  location?: string;
+  color?: string;
+  logo?: string;
+  logos?: EspnLogo[];
+  venue?: {
+    $ref?: string;
+    fullName?: string;
+    displayName?: string;
+    name?: string;
+  };
+}
+
+export interface EspnAthlete {
+  id?: string;
+  uid?: string;
+  fullName?: string;
+  displayName?: string;
+  shortName?: string;
+  jersey?: string;
+  age?: number;
+  position?: {
+    name?: string;
+    displayName?: string;
+    abbreviation?: string;
+  };
+  citizenship?: string;
+  birthPlace?: {
+    country?: string;
+  };
+  headshot?: {
+    href?: string;
+  };
+  headshots?: Array<{
+    href?: string;
+  }>;
+  images?: Array<{
+    href?: string;
+  }>;
+}
+
+export interface EspnRosterGroup {
+  position?: string;
+  name?: string;
+  items?: EspnAthlete[];
+}
+
+export interface EspnRosterResponse {
+  athletes?: Array<EspnAthlete | EspnRosterGroup>;
+}
+
+export interface EspnTeamScheduleResponse extends EspnScoreboardResponse {}
+
+export interface EspnVenueResponse {
+  fullName?: string;
+  displayName?: string;
+  name?: string;
 }

@@ -1,14 +1,83 @@
 const siteApiBaseUrl =
-  import.meta.env.VITE_ESPN_SITE_API_BASE_URL ?? 'https://site.api.espn.com/apis/site/v2';
+  import.meta.env.VITE_ESPN_SITE_API_BASE_URL ?? '/api/espn/site';
+const coreApiBaseUrl =
+  import.meta.env.VITE_ESPN_CORE_API_BASE_URL ?? '/api/espn/core';
+const standingsApiBaseUrl =
+  import.meta.env.VITE_ESPN_STANDINGS_API_BASE_URL ?? '/api/espn/v2';
+const webApiBaseUrl =
+  import.meta.env.VITE_ESPN_WEB_API_BASE_URL ?? '/api/espn/web';
 
 export function buildScoreboardUrl(leagueSlug: string, dateParam: string): string {
-  const url = new URL(`${siteApiBaseUrl}/sports/soccer/${leagueSlug}/scoreboard`);
-  url.searchParams.set('dates', dateParam);
-  return url.toString();
+  const params = new URLSearchParams({ dates: dateParam });
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/scoreboard?${params.toString()}`;
 }
 
 export function buildMatchSummaryUrl(leagueSlug: string, eventId: string): string {
-  const url = new URL(`${siteApiBaseUrl}/sports/soccer/${leagueSlug}/summary`);
-  url.searchParams.set('event', eventId);
-  return url.toString();
+  const params = new URLSearchParams({ event: eventId });
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/summary?${params.toString()}`;
+}
+
+export function buildStandingsUrl(leagueSlug: string): string {
+  return `${standingsApiBaseUrl}/sports/soccer/${leagueSlug}/standings`;
+}
+
+export function buildTeamsUrl(leagueSlug: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams`;
+}
+
+export function buildTeamDetailUrl(leagueSlug: string, teamId: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams/${teamId}`;
+}
+
+export function buildCoreTeamDetailUrl(leagueSlug: string, teamId: string): string {
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}/teams/${teamId}`;
+}
+
+export function buildTeamRosterUrl(leagueSlug: string, teamId: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams/${teamId}/roster`;
+}
+
+export function buildTeamScheduleUrl(leagueSlug: string, teamId: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams/${teamId}/schedule`;
+}
+
+export function buildTeamFixtureScheduleUrl(teamId: string): string {
+  const params = new URLSearchParams({ fixture: 'true' });
+  return `${webApiBaseUrl}/sports/soccer/all/teams/${teamId}/schedule?${params.toString()}`;
+}
+
+export function buildProxiedEspnRefUrl(refUrl: string): string {
+  if (refUrl.startsWith('http://sports.core.api.espn.com/v2')) {
+    return refUrl.replace('http://sports.core.api.espn.com/v2', coreApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('https://sports.core.api.espn.com/v2')) {
+    return refUrl.replace('https://sports.core.api.espn.com/v2', coreApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('http://site.api.espn.com/apis/site/v2')) {
+    return refUrl.replace('http://site.api.espn.com/apis/site/v2', siteApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('https://site.api.espn.com/apis/site/v2')) {
+    return refUrl.replace('https://site.api.espn.com/apis/site/v2', siteApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('http://site.api.espn.com/apis/v2')) {
+    return refUrl.replace('http://site.api.espn.com/apis/v2', standingsApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('https://site.api.espn.com/apis/v2')) {
+    return refUrl.replace('https://site.api.espn.com/apis/v2', standingsApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('http://site.web.api.espn.com/apis/site/v2')) {
+    return refUrl.replace('http://site.web.api.espn.com/apis/site/v2', webApiBaseUrl);
+  }
+
+  if (refUrl.startsWith('https://site.web.api.espn.com/apis/site/v2')) {
+    return refUrl.replace('https://site.web.api.espn.com/apis/site/v2', webApiBaseUrl);
+  }
+
+  return refUrl;
 }

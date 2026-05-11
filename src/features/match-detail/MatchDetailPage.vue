@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-5">
     <RouterLink
-      to="/fixtures"
+      :to="backTarget"
       class="inline-flex items-center rounded border border-app-border px-3 py-2 text-sm font-semibold text-app-secondary transition hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent"
     >
       Quay lại lịch thi đấu
@@ -116,6 +116,7 @@
 
 <script setup lang="ts">
 import { computed, toRefs } from 'vue';
+import { useRoute } from 'vue-router';
 import type { MatchEvent, MatchEventType } from '@/domain/models';
 import { useMatchSummary } from '@/composables/useMatchSummary';
 import { formatKickoffDateTime } from '@/utils/date';
@@ -129,7 +130,9 @@ const props = defineProps<{
 }>();
 
 const { leagueSlug, eventId } = toRefs(props);
+const route = useRoute();
 const { data: match, isLoading, isError, refetch } = useMatchSummary(leagueSlug, eventId);
+const backTarget = computed(() => getSafeReturnTo(route.query.returnTo));
 
 const timeLabel = computed(() => {
   if (!match.value?.kickoff) {
@@ -173,5 +176,13 @@ function eventSide(event: MatchEvent): 'home' | 'away' | 'unknown' {
 
 function handleRefetch(): void {
   void refetch();
+}
+
+function getSafeReturnTo(returnTo: unknown): string {
+  if (typeof returnTo !== 'string') {
+    return '/fixtures';
+  }
+
+  return returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/fixtures';
 }
 </script>

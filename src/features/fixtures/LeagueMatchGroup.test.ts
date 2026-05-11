@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { computed } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FootballMatch } from '@/domain/models';
 import LeagueMatchGroup from './LeagueMatchGroup.vue';
 
@@ -21,10 +21,16 @@ vi.mock('@/composables/useScoreboards', () => ({
 
 describe('LeagueMatchGroup', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-08T00:00:00+07:00'));
     mockMatches = [];
     mockIsLoading = false;
     mockIsError = false;
     mockIsFetching = false;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders only date sections that have matches after local-date filtering', () => {
