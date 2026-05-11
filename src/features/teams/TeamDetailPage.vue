@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-5">
     <RouterLink
-      :to="{ name: 'teams', params: { leagueSlug } }"
+      :to="{ name: 'teams', params: { leagueSlug: effectiveLeagueSlug } }"
       class="inline-flex items-center rounded border border-app-border px-3 py-2 text-sm font-semibold text-app-secondary transition hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent"
     >
       Quay lại danh sách đội
@@ -33,8 +33,8 @@
             <p class="mt-1 text-sm text-app-secondary">{{ team.abbreviation ?? team.location ?? 'Đội bóng' }}</p>
           </div>
           <FavoriteTeamButton
-            :is-favorite="preferences.isFavoriteTeam(leagueSlug, team.id)"
-            @toggle="preferences.toggleFavoriteTeam(leagueSlug, team.id)"
+            :is-favorite="preferences.isFavoriteTeam(effectiveLeagueSlug, team.id)"
+            @toggle="preferences.toggleFavoriteTeam(effectiveLeagueSlug, team.id)"
           />
         </div>
       </header>
@@ -164,7 +164,12 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { INITIAL_LEAGUES, getLeagueBySlug, getLeagueShortName } from '@/domain/leagues';
+import {
+  getLeagueBySlug,
+  getLeagueShortName,
+  getSupportedLeagueFallback,
+  isSupportedLeagueSlug
+} from '@/domain/leagues';
 import type { PlayerSummary } from '@/domain/models';
 import { isResultStatus, isUpcomingStatus } from '@/domain/status';
 import { useTeamDetail } from '@/composables/useTeamDetail';
@@ -183,34 +188,35 @@ const props = defineProps<{
   teamId: string;
 }>();
 
-const { leagueSlug, teamId } = toRefs(props);
+const { teamId } = toRefs(props);
 const route = useRoute();
 const router = useRouter();
 const preferences = usePreferencesStore();
 const activeScheduleTab = ref<FixtureMode>(parseScheduleTab(route.query.tab));
 const activeScheduleLeague = ref(parseScheduleLeague(route.query.league));
-const isSupportedLeague = computed(() =>
-  INITIAL_LEAGUES.some((league) => league.slug === props.leagueSlug)
+const effectiveLeagueSlug = computed(() =>
+  isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
 );
+const isSupportedLeague = computed(() => isSupportedLeagueSlug(effectiveLeagueSlug.value));
 const {
   data: team,
   isLoading: teamIsLoading,
   isError: teamIsError,
   refetch: refetchTeam
-} = useTeamDetail(leagueSlug, teamId, isSupportedLeague);
+} = useTeamDetail(effectiveLeagueSlug, teamId, isSupportedLeague);
 const {
   data: roster,
   isLoading: rosterIsLoading,
   isError: rosterIsError,
   refetch: refetchRoster
-} = useTeamRoster(leagueSlug, teamId, isSupportedLeague);
+} = useTeamRoster(effectiveLeagueSlug, teamId, isSupportedLeague);
 const {
   data: schedule,
   isLoading: scheduleIsLoading,
   isError: scheduleIsError,
   refetch: refetchSchedule
-} = useTeamSchedule(leagueSlug, teamId, isSupportedLeague);
-const leagueName = computed(() => getLeagueBySlug(props.leagueSlug).name);
+} = useTeamSchedule(effectiveLeagueSlug, teamId, isSupportedLeague);
+const leagueName = computed(() => getLeagueBySlug(effectiveLeagueSlug.value).name);
 const rosterGroups = computed(() => groupRoster(roster.value ?? []));
 const scheduleLeagueOptions = computed(() => {
   const leagues = new Map<string, string>();
@@ -240,6 +246,20 @@ const visibleSchedule = computed(() => {
         : new Date(left.kickoff).getTime() - new Date(right.kickoff).getTime()
     );
 });
+
+watch(
+  () => props.leagueSlug,
+  (slug) => {
+    if (!isSupportedLeagueSlug(slug)) {
+      void router.replace({
+        name: 'team-detail',
+        params: { leagueSlug: getSupportedLeagueFallback(slug), teamId: props.teamId },
+        query: route.query
+      });
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => [route.query.tab, route.query.league],

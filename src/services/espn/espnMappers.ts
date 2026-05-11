@@ -69,6 +69,13 @@ export function mapSummaryResponse(
   const awayScore = parseCompetitorScore(away);
   const status = normalizeStatus(eventStatus, homeScore !== undefined && awayScore !== undefined);
   const events = mapMatchEvents(response);
+  const penaltyShootout = parsePenaltyShootout(home, away, [
+    eventStatus?.type?.detail,
+    eventStatus?.type?.shortDetail,
+    response.header?.name,
+    response.header?.shortName,
+    ...(competition?.notes ?? []).flatMap((note) => [note.headline, note.text])
+  ]);
 
   return {
     id: response.header?.id ?? eventId,
@@ -82,6 +89,18 @@ export function mapSummaryResponse(
     awayTeam: mapTeam(away, 'Đội khách'),
     homeScore,
     awayScore,
+    penaltyShootout,
+    importanceLabel: getImportanceLabel([
+      response.header?.name,
+      response.header?.shortName,
+      response.header?.season?.displayName,
+      response.header?.season?.name,
+      response.header?.seasonType?.displayName,
+      response.header?.seasonType?.name,
+      eventStatus?.type?.detail,
+      eventStatus?.type?.shortDetail,
+      ...(competition?.notes ?? []).flatMap((note) => [note.type, note.headline, note.text])
+    ]),
     venue: response.gameInfo?.venue?.fullName ?? competition?.venue?.fullName,
     attendance: response.gameInfo?.attendance ?? competition?.attendance,
     broadcasts: extractBroadcasts(response.broadcasts ?? competition?.broadcasts),
@@ -159,6 +178,12 @@ function mapEventToFootballMatch(
   const homeScore = parseCompetitorScore(home);
   const awayScore = parseCompetitorScore(away);
   const status = normalizeStatus(eventStatus, homeScore !== undefined && awayScore !== undefined);
+  const penaltyShootout = parsePenaltyShootout(home, away, [
+    eventStatus?.type?.detail,
+    eventStatus?.type?.shortDetail,
+    event.name,
+    event.shortName
+  ]);
 
   return {
     id: event.id ?? event.uid ?? event.name ?? `${leagueSlug}-${event.date ?? 'unknown'}`,
@@ -172,6 +197,17 @@ function mapEventToFootballMatch(
     awayTeam: mapTeam(away, 'Đội khách'),
     homeScore,
     awayScore,
+    penaltyShootout,
+    importanceLabel: getImportanceLabel([
+      event.name,
+      event.shortName,
+      event.seasonType?.displayName,
+      event.seasonType?.name,
+      eventStatus?.type?.detail,
+      eventStatus?.type?.shortDetail,
+      ...(event.notes ?? []).flatMap((note) => [note.type, note.headline, note.text]),
+      ...(competition?.notes ?? []).flatMap((note) => [note.type, note.headline, note.text])
+    ]),
     venue: competition?.venue?.fullName
   };
 }
@@ -383,6 +419,35 @@ function parseCompetitorScore(competitor: EspnCompetitor | undefined): number | 
   return parseScore(competitor?.score) ?? (typeof scoreValue === 'number' && Number.isFinite(scoreValue) ? scoreValue : undefined);
 }
 
+function parsePenaltyShootout(
+  home: EspnCompetitor | undefined,
+  away: EspnCompetitor | undefined,
+  textCandidates: Array<string | undefined>
+): FootballMatch['penaltyShootout'] {
+  const homePenaltyScore = parseScore(home?.shootoutScore) ?? parseScore(home?.penaltyScore);
+  const awayPenaltyScore = parseScore(away?.shootoutScore) ?? parseScore(away?.penaltyScore);
+
+  if (homePenaltyScore !== undefined && awayPenaltyScore !== undefined) {
+    return { home: homePenaltyScore, away: awayPenaltyScore };
+  }
+
+  const text = textCandidates.filter(Boolean).join(' ');
+  const penaltyMatch =
+    text.match(/(?:pen|pens|penalties)[^\d]*(\d+)\s*[-–]\s*(\d+)/i) ??
+    text.match(/(\d+)\s*[-–]\s*(\d+)[^\d]*(?:pen|pens|penalties)/i);
+
+  if (!penaltyMatch) {
+    return undefined;
+  }
+
+  const parsedHome = Number(penaltyMatch[1]);
+  const parsedAway = Number(penaltyMatch[2]);
+
+  return Number.isFinite(parsedHome) && Number.isFinite(parsedAway)
+    ? { home: parsedHome, away: parsedAway }
+    : undefined;
+}
+
 function dedupeMatchesById(matches: FootballMatch[]): FootballMatch[] {
   const byId = new Map<string, FootballMatch>();
 
@@ -403,6 +468,9 @@ function matchCompletenessScore(match: FootballMatch): number {
     match.status !== 'unknown' ? match.status : undefined,
     match.homeScore,
     match.awayScore,
+    match.penaltyShootout?.home,
+    match.penaltyShootout?.away,
+    match.importanceLabel,
     match.homeTeam.logoUrl,
     match.awayTeam.logoUrl,
     match.venue
@@ -464,6 +532,7 @@ function mapMatchEvent(event: EspnMatchEvent, type: MatchEventType, id: string):
   return {
     id,
     type,
+    goalQualifier: type === 'goal' ? getGoalQualifier(event) : undefined,
     teamId: event.team?.id,
     teamName: event.team?.displayName,
     playerName,
@@ -471,4 +540,45 @@ function mapMatchEvent(event: EspnMatchEvent, type: MatchEventType, id: string):
     displayMinute: event.clock?.displayValue ?? '',
     text: event.text ?? event.shortText ?? playerName
   };
+}
+
+function getGoalQualifier(event: EspnMatchEvent): MatchEvent['goalQualifier'] {
+  const text = normalizeText([
+    event.type?.type,
+    event.type?.text,
+    event.text,
+    event.shortText
+  ]);
+
+  if (/\b(free kick|freekick|free-kick)\b/.test(text)) {
+    return 'free_kick';
+  }
+
+  if (/\b(penalty|pen)\b/.test(text)) {
+    return 'penalty';
+  }
+
+  return undefined;
+}
+
+function getImportanceLabel(candidates: Array<string | undefined>): string | undefined {
+  const text = normalizeText(candidates);
+
+  if (/\b(quarter final|quarterfinal|quarter finals|quarterfinals)\b/.test(text) || text.includes('tứ kết')) {
+    return 'Tứ kết';
+  }
+
+  if (/\b(semi final|semifinal|semi finals|semifinals)\b/.test(text) || text.includes('bán kết')) {
+    return 'Bán kết';
+  }
+
+  if (/\bfinals?\b/.test(text) || text.includes('chung kết')) {
+    return 'Chung kết';
+  }
+
+  return undefined;
+}
+
+function normalizeText(candidates: Array<string | undefined>): string {
+  return candidates.filter(Boolean).join(' ').toLowerCase().replace(/[_-]+/g, ' ');
 }

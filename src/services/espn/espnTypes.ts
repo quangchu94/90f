@@ -30,6 +30,15 @@ export interface EspnCompetitor {
     displayValue?: string;
   };
   scoreValue?: number;
+  shootoutScore?: string | number | {
+    value?: number;
+    displayValue?: string;
+  };
+  penaltyScore?: string | number | {
+    value?: number;
+    displayValue?: string;
+  };
+  winner?: boolean;
   curatedRank?: {
     current?: number;
   };
@@ -45,6 +54,11 @@ export interface EspnCompetition {
   };
   broadcasts?: Array<{
     names?: string[];
+  }>;
+  notes?: Array<{
+    type?: string;
+    headline?: string;
+    text?: string;
   }>;
   attendance?: number;
 }
@@ -103,7 +117,15 @@ export interface EspnEventStatus {
 export interface EspnLeague {
   slug?: string;
   name?: string;
+  displayName?: string;
+  shortName?: string;
   abbreviation?: string;
+  $ref?: string;
+}
+
+export interface EspnLeagueCollectionResponse {
+  items?: EspnLeague[];
+  leagues?: EspnLeague[];
 }
 
 export interface EspnEvent {
@@ -120,6 +142,11 @@ export interface EspnEvent {
     name?: string;
     displayName?: string;
   };
+  notes?: Array<{
+    type?: string;
+    headline?: string;
+    text?: string;
+  }>;
   status?: EspnEventStatus;
   competitions?: EspnCompetition[];
   leagues?: EspnLeague[];
@@ -136,6 +163,16 @@ export interface EspnSummaryResponse {
     competitions?: EspnCompetition[];
     status?: EspnEventStatus;
     league?: EspnLeague;
+    name?: string;
+    shortName?: string;
+    season?: {
+      name?: string;
+      displayName?: string;
+    };
+    seasonType?: {
+      name?: string;
+      displayName?: string;
+    };
   };
   boxscore?: unknown;
   gameInfo?: {

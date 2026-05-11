@@ -41,9 +41,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DEFAULT_LEAGUE_SLUGS } from '@/domain/leagues';
+import { DEFAULT_LEAGUE_SLUG, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
 import { useFixturesStore } from '@/stores/fixturesStore';
 
 const fixturesStore = useFixturesStore();
-const defaultLeagueSlug = computed(() => fixturesStore.selectedLeagueSlugs[0] ?? DEFAULT_LEAGUE_SLUGS[0]);
+const defaultLeagueSlug = computed(() => {
+  const selectedLeagueSlug = fixturesStore.selectedLeagueSlug ?? DEFAULT_LEAGUE_SLUG;
+  return isSupportedLeagueSlug(selectedLeagueSlug)
+    ? selectedLeagueSlug
+    : getSupportedLeagueFallback(selectedLeagueSlug);
+});
 </script>

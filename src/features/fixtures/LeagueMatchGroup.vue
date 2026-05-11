@@ -45,6 +45,7 @@
 import { computed, toRef } from 'vue';
 import { getLeagueBySlug } from '@/domain/leagues';
 import { dedupeMatchesById, filterMatchesForModeDate } from '@/domain/matchFilters';
+import type { LeagueSummary } from '@/domain/models';
 import type { FixtureMode } from '@/stores/fixturesStore';
 import { useScoreboards } from '@/composables/useScoreboards';
 import { getScoreboardSourceDateRange } from '@/utils/date';
@@ -53,11 +54,12 @@ import StateBlock from '@/components/common/StateBlock.vue';
 
 const props = defineProps<{
   leagueSlug: string;
+  leagueSummary?: LeagueSummary;
   dates: string[];
   mode: FixtureMode;
 }>();
 
-const league = computed(() => getLeagueBySlug(props.leagueSlug));
+const league = computed(() => props.leagueSummary ?? getLeagueBySlug(props.leagueSlug));
 const subtitle = computed(() =>
   props.mode === 'results' ? 'Các trận đã kết thúc' : 'Các trận sắp diễn ra'
 );

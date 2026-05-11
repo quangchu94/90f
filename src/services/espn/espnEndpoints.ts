@@ -46,6 +46,11 @@ export function buildTeamFixtureScheduleUrl(teamId: string): string {
   return `${webApiBaseUrl}/sports/soccer/all/teams/${teamId}/schedule?${params.toString()}`;
 }
 
+export function buildSoccerLeaguesUrl(): string {
+  const params = new URLSearchParams({ limit: '1000' });
+  return `${coreApiBaseUrl}/sports/soccer/leagues?${params.toString()}`;
+}
+
 export function buildProxiedEspnRefUrl(refUrl: string): string {
   if (refUrl.startsWith('http://sports.core.api.espn.com/v2')) {
     return refUrl.replace('http://sports.core.api.espn.com/v2', coreApiBaseUrl);

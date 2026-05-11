@@ -201,4 +201,21 @@ describe('TeamDetailPage', () => {
     expect(wrapper.text()).not.toContain('Chelsea');
     expect(wrapper.text()).not.toContain('Barcelona');
   });
+
+  it('replaces unsupported route league with a supported country fallback', () => {
+    mount(TeamDetailPage, {
+      props: { leagueSlug: 'esp.copa_del_rey', teamId: '83' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+
+    expect(routerMock.replace).toHaveBeenCalledWith({
+      name: 'team-detail',
+      params: { leagueSlug: 'esp.1', teamId: '83' },
+      query: {}
+    });
+  });
 });

@@ -52,6 +52,15 @@ describe('MatchRow', () => {
     expect(wrapper.text()).not.toContain('Premier League');
   });
 
+  it('renders important match tags when present', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: { ...makeMatch('scheduled'), importanceLabel: 'Tứ kết' } },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+
+    expect(wrapper.text()).toContain('Tứ kết');
+  });
+
   it('passes the current route as return target to match detail', () => {
     const wrapper = mount(MatchRow, {
       props: { match: makeMatch('scheduled') },

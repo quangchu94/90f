@@ -5,6 +5,9 @@
   >
     <div class="text-center">
       <p v-if="showLeague" class="line-clamp-2 text-[0.65rem] font-semibold leading-tight text-app-secondary">{{ leagueLabel }}</p>
+      <p v-if="match.importanceLabel" class="mt-1 inline-flex rounded border border-app-amber/50 px-1.5 py-0.5 text-[0.65rem] font-bold text-app-amber">
+        {{ match.importanceLabel }}
+      </p>
       <p v-if="showDate" class="text-xs font-semibold text-app-secondary">{{ dateLabel }}</p>
       <p class="text-sm font-bold text-app-amber">{{ timeLabel }}</p>
       <StatusBadge class="mt-2" :status="match.status" :label="compactStatusLabel" />

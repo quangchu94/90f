@@ -24,7 +24,15 @@
             <p class="text-sm font-semibold text-app-amber">{{ match.leagueName }}</p>
             <h1 class="mt-1 text-xl font-black sm:text-2xl">{{ match.homeTeam.name }} vs {{ match.awayTeam.name }}</h1>
           </div>
-          <StatusBadge :status="match.status" :label="match.statusText" />
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <span
+              v-if="match.importanceLabel"
+              class="inline-flex h-6 items-center rounded border border-app-amber/50 px-2 text-xs font-bold text-app-amber"
+            >
+              {{ match.importanceLabel }}
+            </span>
+            <StatusBadge :status="match.status" :label="match.statusText" />
+          </div>
         </div>
 
         <div class="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -35,6 +43,9 @@
 
           <div class="rounded border border-app-border bg-app-elevated px-4 py-3 text-center">
             <p class="text-3xl font-black">{{ scoreLabel(match.homeScore) }} - {{ scoreLabel(match.awayScore) }}</p>
+            <p v-if="match.penaltyShootout" class="mt-1 text-xs font-bold text-app-secondary">
+              Pen: {{ match.penaltyShootout.home }} - {{ match.penaltyShootout.away }}
+            </p>
             <p class="mt-1 text-xs font-semibold text-app-amber">{{ timeLabel }}</p>
           </div>
 
@@ -62,7 +73,7 @@
           >
             <div class="min-w-0 text-left" data-testid="home-event">
               <div v-if="eventSide(event) === 'home' || eventSide(event) === 'unknown'" class="min-w-0">
-                <p class="truncate text-sm font-semibold">{{ event.playerName }}</p>
+                <p class="truncate text-sm font-semibold">{{ eventPlayerLabel(event) }}</p>
                 <p class="truncate text-xs text-app-secondary">{{ event.teamName ?? event.text }}</p>
               </div>
             </div>
@@ -76,7 +87,7 @@
 
             <div class="min-w-0 text-right" data-testid="away-event">
               <div v-if="eventSide(event) === 'away'" class="min-w-0">
-                <p class="truncate text-sm font-semibold">{{ event.playerName }}</p>
+                <p class="truncate text-sm font-semibold">{{ eventPlayerLabel(event) }}</p>
                 <p class="truncate text-xs text-app-secondary">{{ event.teamName ?? event.text }}</p>
               </div>
             </div>
@@ -172,6 +183,18 @@ function eventSide(event: MatchEvent): 'home' | 'away' | 'unknown' {
   }
 
   return 'unknown';
+}
+
+function eventPlayerLabel(event: MatchEvent): string {
+  if (event.goalQualifier === 'penalty') {
+    return `${event.playerName} (P)`;
+  }
+
+  if (event.goalQualifier === 'free_kick') {
+    return `${event.playerName} (F)`;
+  }
+
+  return event.playerName;
 }
 
 function handleRefetch(): void {

@@ -19,6 +19,11 @@ export interface LeagueSummary {
   slug: string;
   name: string;
   shortName?: string;
+  groupLabel?: string;
+  groupType?: 'country' | 'continental' | 'world' | 'misc' | 'other';
+  countryCode?: string;
+  confederation?: string;
+  isExcludedFromTeamSchedule?: boolean;
 }
 
 export interface StandingGroup {
@@ -67,6 +72,7 @@ export type MatchEventType = 'goal' | 'red_card';
 export interface MatchEvent {
   id: string;
   type: MatchEventType;
+  goalQualifier?: 'penalty' | 'free_kick';
   teamId?: string;
   teamName?: string;
   playerName: string;
@@ -87,6 +93,11 @@ export interface FootballMatch {
   awayTeam: TeamSummary;
   homeScore?: number;
   awayScore?: number;
+  penaltyShootout?: {
+    home: number;
+    away: number;
+  };
+  importanceLabel?: string;
   venue?: string;
 }
 

@@ -13,13 +13,19 @@
     </section>
 
     <FixtureModeTabs :model-value="store.activeTab" @update:model-value="store.setActiveTab" />
-    <LeagueFilter :selected-league-slugs="store.selectedLeagueSlugs" @toggle="store.toggleLeague" />
+    <LeagueFilter
+      :selected-league-slug="store.selectedLeagueSlug"
+      :favorite-leagues="store.favoriteLeagues"
+      @select="store.selectLeague"
+      @add-favorite="store.addFavoriteLeague"
+      @remove-favorite="store.removeFavoriteLeague"
+    />
 
     <div class="space-y-6">
       <LeagueMatchGroup
-        v-for="leagueSlug in store.selectedLeagueSlugs"
-        :key="leagueSlug"
-        :league-slug="leagueSlug"
+        :key="store.selectedLeagueSlug"
+        :league-slug="store.selectedLeagueSlug"
+        :league-summary="selectedLeague"
         :dates="activeDates"
         :mode="store.activeTab"
       />
@@ -46,6 +52,9 @@ import LeagueFilter from './LeagueFilter.vue';
 import LeagueMatchGroup from './LeagueMatchGroup.vue';
 
 const store = useFixturesStore();
+const selectedLeague = computed(() =>
+  store.favoriteLeagues.find((league) => league.slug === store.selectedLeagueSlug)
+);
 
 const activeDates = computed(() =>
   store.activeTab === 'results'

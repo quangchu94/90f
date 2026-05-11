@@ -6,16 +6,10 @@
         <h1 class="mt-1 text-2xl font-black tracking-normal sm:text-3xl">Đội bóng</h1>
         <p class="mt-1 text-sm text-app-secondary">{{ leagueName }}</p>
       </div>
-      <LeagueRouteSelector :model-value="leagueSlug" @update:model-value="handleLeagueChange" />
+      <LeagueRouteSelector :model-value="effectiveLeagueSlug" @update:model-value="handleLeagueChange" />
     </section>
 
-    <StateBlock
-      v-if="!isSupportedLeague"
-      title="Giải đấu chưa được hỗ trợ"
-      message="Vui lòng chọn một giải đấu khác trong danh sách."
-    />
-
-    <div v-else-if="isLoading" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div v-if="isLoading" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <div v-for="index in 9" :key="index" class="h-24 animate-pulse rounded border border-app-border bg-app-surface" />
     </div>
 
@@ -42,7 +36,7 @@
             :key="`favorite-${team.id}`"
             :team="team"
             :is-favorite="true"
-            @toggle-favorite="preferences.toggleFavoriteTeam(leagueSlug, team.id)"
+            @toggle-favorite="preferences.toggleFavoriteTeam(effectiveLeagueSlug, team.id)"
           />
         </div>
       </div>
@@ -52,8 +46,8 @@
           v-for="team in teams"
           :key="team.id"
           :team="team"
-          :is-favorite="preferences.isFavoriteTeam(leagueSlug, team.id)"
-          @toggle-favorite="preferences.toggleFavoriteTeam(leagueSlug, team.id)"
+          :is-favorite="preferences.isFavoriteTeam(effectiveLeagueSlug, team.id)"
+          @toggle-favorite="preferences.toggleFavoriteTeam(effectiveLeagueSlug, team.id)"
         />
       </div>
     </section>
@@ -61,9 +55,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
+import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { INITIAL_LEAGUES, getLeagueBySlug } from '@/domain/leagues';
+import { getLeagueBySlug, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
 import { useTeams } from '@/composables/useTeams';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import LeagueRouteSelector from '@/components/football/LeagueRouteSelector.vue';
@@ -76,14 +70,23 @@ const props = defineProps<{
 
 const router = useRouter();
 const preferences = usePreferencesStore();
-const { leagueSlug } = toRefs(props);
-const isSupportedLeague = computed(() =>
-  INITIAL_LEAGUES.some((league) => league.slug === props.leagueSlug)
+const effectiveLeagueSlug = computed(() =>
+  isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
 );
-const { data: teams, isLoading, isError, refetch } = useTeams(leagueSlug, isSupportedLeague);
-const leagueName = computed(() => getLeagueBySlug(props.leagueSlug).name);
+const { data: teams, isLoading, isError, refetch } = useTeams(effectiveLeagueSlug);
+const leagueName = computed(() => getLeagueBySlug(effectiveLeagueSlug.value).name);
 const favoriteTeams = computed(() =>
-  (teams.value ?? []).filter((team) => preferences.isFavoriteTeam(props.leagueSlug, team.id))
+  (teams.value ?? []).filter((team) => preferences.isFavoriteTeam(effectiveLeagueSlug.value, team.id))
+);
+
+watch(
+  () => props.leagueSlug,
+  (slug) => {
+    if (!isSupportedLeagueSlug(slug)) {
+      void router.replace({ name: 'teams', params: { leagueSlug: getSupportedLeagueFallback(slug) } });
+    }
+  },
+  { immediate: true }
 );
 
 function handleLeagueChange(nextLeagueSlug: string): void {

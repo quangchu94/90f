@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildProxiedEspnRefUrl, buildScoreboardUrl, buildTeamFixtureScheduleUrl } from './espnEndpoints';
+import {
+  buildProxiedEspnRefUrl,
+  buildScoreboardUrl,
+  buildSoccerLeaguesUrl,
+  buildTeamFixtureScheduleUrl
+} from './espnEndpoints';
 
 describe('espn endpoints', () => {
   it('builds same-origin scoreboard URLs by default', () => {
@@ -20,5 +25,9 @@ describe('espn endpoints', () => {
     expect(buildTeamFixtureScheduleUrl('364')).toBe(
       '/api/espn/web/sports/soccer/all/teams/364/schedule?fixture=true'
     );
+  });
+
+  it('builds core soccer league catalog URLs', () => {
+    expect(buildSoccerLeaguesUrl()).toBe('/api/espn/core/sports/soccer/leagues?limit=1000');
   });
 });

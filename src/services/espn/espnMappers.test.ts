@@ -77,6 +77,109 @@ describe('espn mappers', () => {
     expect(detail.events).toHaveLength(2);
   });
 
+  it('maps important match labels and penalty shootout scores', () => {
+    const summary = makeScheduledSummary();
+    summary.header = {
+      ...summary.header,
+      name: 'UEFA Champions League Semifinal',
+      status: { type: { state: 'post', completed: true, detail: 'FT-Pens Arsenal win 4-3 on penalties' } },
+      competitions: [
+        {
+          ...summary.header?.competitions?.[0],
+          competitors: [
+            {
+              homeAway: 'home',
+              score: '1',
+              shootoutScore: '4',
+              team: { id: '359', displayName: 'Arsenal', shortDisplayName: 'Arsenal' }
+            },
+            {
+              homeAway: 'away',
+              score: '1',
+              shootoutScore: '3',
+              team: { id: '83', displayName: 'Barcelona', shortDisplayName: 'Barcelona' }
+            }
+          ]
+        }
+      ]
+    };
+
+    const detail = mapSummaryResponse(summary, 'uefa.champions', '999');
+
+    expect(detail.importanceLabel).toBe('Bán kết');
+    expect(detail.penaltyShootout).toEqual({ home: 4, away: 3 });
+  });
+
+  it('maps knockout labels from ESPN summary season names', () => {
+    const final = makeScheduledSummary();
+    final.header = {
+      ...final.header,
+      season: { name: '2025-26 English FA Cup, Final' }
+    };
+    const semifinal = makeScheduledSummary();
+    semifinal.header = {
+      ...semifinal.header,
+      season: { name: '2025-26 English FA Cup, Semifinals' }
+    };
+    const quarterfinal = makeScheduledSummary();
+    quarterfinal.header = {
+      ...quarterfinal.header,
+      season: { name: '2025-26 English FA Cup, Quarterfinals' }
+    };
+
+    expect(mapSummaryResponse(final, 'eng.fa', '401867655').importanceLabel).toBe('Chung kết');
+    expect(mapSummaryResponse(semifinal, 'eng.fa', '401867653').importanceLabel).toBe('Bán kết');
+    expect(mapSummaryResponse(quarterfinal, 'eng.fa', '401864079').importanceLabel).toBe('Tứ kết');
+  });
+
+  it('parses penalty shootout fallback from summary notes', () => {
+    const summary = makeScheduledSummary();
+    summary.header = {
+      ...summary.header,
+      competitions: [
+        {
+          ...summary.header?.competitions?.[0],
+          competitors: [
+            {
+              homeAway: 'home',
+              score: '2',
+              team: { id: '1', displayName: 'West Ham United', shortDisplayName: 'West Ham' }
+            },
+            {
+              homeAway: 'away',
+              score: '2',
+              team: { id: '2', displayName: 'Leeds United', shortDisplayName: 'Leeds' }
+            }
+          ],
+          notes: [{ type: 'event', headline: 'Leeds United advance 4-2 on penalties' }]
+        }
+      ]
+    };
+
+    expect(mapSummaryResponse(summary, 'eng.fa', '401864079').penaltyShootout).toEqual({
+      home: 4,
+      away: 2
+    });
+  });
+
+  it('maps final labels from scoreboard events', () => {
+    const response = makeScoreboard('pre');
+    response.events![0].name = 'FIFA World Cup Final';
+
+    const match = mapScoreboardResponse(response, 'fifa.world')[0];
+
+    expect(match.importanceLabel).toBe('Chung kết');
+  });
+
+  it('marks penalty and free-kick goals in match events', () => {
+    const detail = mapSummaryResponse(makeSummaryWithGoalQualifiers(), 'esp.1', '748480');
+
+    expect(detail.goals.map((goal) => [goal.playerName, goal.goalQualifier])).toEqual([
+      ['Robert Lewandowski', 'penalty'],
+      ['Raphinha', 'free_kick']
+    ]);
+  });
+
   it('returns empty events for scheduled summaries without key events', () => {
     const detail = mapSummaryResponse(makeScheduledSummary(), 'esp.1', '748491');
 
@@ -440,6 +543,32 @@ function makeSummaryWithEvents(): EspnSummaryResponse {
         team: { id: '86', displayName: 'Real Madrid' },
         participants: [{ athlete: { id: '124562', displayName: 'Eduardo Camavinga' } }],
         text: 'Eduardo Camavinga is shown the red card.'
+      }
+    ]
+  };
+}
+
+function makeSummaryWithGoalQualifiers(): EspnSummaryResponse {
+  return {
+    ...makeScheduledSummary(),
+    keyEvents: [
+      {
+        id: 'goal-penalty',
+        type: { type: 'goal---penalty', text: 'Penalty - Scored' },
+        scoringPlay: true,
+        clock: { value: 1200, displayValue: "20'" },
+        team: { id: '83', displayName: 'Barcelona' },
+        participants: [{ athlete: { id: '125824', displayName: 'Robert Lewandowski' } }],
+        text: 'Robert Lewandowski converts the penalty.'
+      },
+      {
+        id: 'goal-free-kick',
+        type: { type: 'goal---free-kick', text: 'Goal - Free Kick' },
+        scoringPlay: true,
+        clock: { value: 2400, displayValue: "40'" },
+        team: { id: '83', displayName: 'Barcelona' },
+        participants: [{ athlete: { id: '129740', displayName: 'Raphinha' } }],
+        text: 'Raphinha scores from a free kick.'
       }
     ]
   };

@@ -26,6 +26,8 @@ vi.mock('@/composables/useMatchSummary', () => ({
       awayTeam: { id: '83', name: 'Barcelona', shortName: 'Barcelona' },
       homeScore: 1,
       awayScore: 2,
+      penaltyShootout: { home: 4, away: 5 },
+      importanceLabel: 'Chung kết',
       broadcasts: [],
       notes: [],
       attendance: 12000,
@@ -36,6 +38,7 @@ vi.mock('@/composables/useMatchSummary', () => ({
           teamId: '97',
           teamName: 'Osasuna',
           playerName: 'Ante Budimir',
+          goalQualifier: 'penalty',
           displayMinute: "20'",
           text: 'Goal'
         },
@@ -45,6 +48,7 @@ vi.mock('@/composables/useMatchSummary', () => ({
           teamId: '83',
           teamName: 'Barcelona',
           playerName: 'Robert Lewandowski',
+          goalQualifier: 'free_kick',
           displayMinute: "30'",
           text: 'Goal'
         }
@@ -75,9 +79,16 @@ describe('MatchDetailPage', () => {
     const wrapper = mountPage();
     const rows = wrapper.findAll('[data-testid="timeline-event"]');
 
-    expect(rows[0].find('[data-testid="home-event"]').text()).toContain('Ante Budimir');
+    expect(rows[0].find('[data-testid="home-event"]').text()).toContain('Ante Budimir (P)');
     expect(rows[0].find('[data-testid="event-badge"]').text()).toContain('Bàn thắng');
-    expect(rows[1].find('[data-testid="away-event"]').text()).toContain('Robert Lewandowski');
+    expect(rows[1].find('[data-testid="away-event"]').text()).toContain('Robert Lewandowski (F)');
+  });
+
+  it('renders important match tag and penalty shootout score', () => {
+    const wrapper = mountPage();
+
+    expect(wrapper.text()).toContain('Chung kết');
+    expect(wrapper.text()).toContain('Pen: 4 - 5');
   });
 
   it('uses returnTo query for the back link', () => {

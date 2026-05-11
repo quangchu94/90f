@@ -3,6 +3,7 @@ import {
   buildMatchSummaryUrl,
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
+  buildSoccerLeaguesUrl,
   buildStandingsUrl,
   buildTeamDetailUrl,
   buildTeamFixtureScheduleUrl,
@@ -10,8 +11,17 @@ import {
   buildTeamScheduleUrl,
   buildTeamsUrl
 } from './espnEndpoints';
-import { getLeagueBySlug, INITIAL_LEAGUES, isSupportedLeagueSlug } from '@/domain/leagues';
+import {
+  enrichLeagueMetadata,
+  getLeagueBySlug,
+  getTeamScheduleCandidateLeagues,
+  INITIAL_LEAGUES,
+  mergeLeagueSummaries
+} from '@/domain/leagues';
+import type { LeagueSummary } from '@/domain/models';
 import type {
+  EspnLeague,
+  EspnLeagueCollectionResponse,
   EspnRosterResponse,
   EspnScoreboardResponse,
   EspnStandingsResponse,
@@ -23,6 +33,7 @@ import type {
 } from './espnTypes';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const TEAM_SCHEDULE_CONCURRENCY = 6;
 
 export class EspnError extends Error {
   constructor(
@@ -120,6 +131,17 @@ export async function fetchTeams(
   return espnHttpClient.getJson<EspnTeamsResponse>(buildTeamsUrl(leagueSlug), signal);
 }
 
+export async function fetchSoccerLeagues(signal?: AbortSignal): Promise<LeagueSummary[]> {
+  const response = await espnHttpClient.getJson<EspnLeagueCollectionResponse>(
+    buildSoccerLeaguesUrl(),
+    signal
+  );
+  const rawLeagues = [...(response.items ?? []), ...(response.leagues ?? [])];
+  const directLeagues = rawLeagues.map(mapEspnLeagueSummary).filter(isLeagueSummary);
+
+  return mergeLeagueSummaries(directLeagues);
+}
+
 export async function fetchTeamDetail(
   leagueSlug: string,
   teamId: string,
@@ -155,20 +177,15 @@ export async function fetchTeamSchedule(
   teamId: string,
   signal?: AbortSignal
 ): Promise<EspnTeamScheduleResponse> {
-  const leaguesToQuery = [
-    ...INITIAL_LEAGUES.filter((league) => league.slug === leagueSlug),
-    ...INITIAL_LEAGUES.filter((league) => league.slug !== leagueSlug)
-  ];
-  const leagueSchedules = leaguesToQuery.map((league) =>
-    espnHttpClient
-      .getJson<EspnTeamScheduleResponse>(buildTeamScheduleUrl(league.slug, teamId), signal)
-      .then((response) => withScheduleSourceLeague(response, league.slug, league.name))
+  const catalogLeagues = await fetchSoccerLeagues(signal).catch(() => INITIAL_LEAGUES);
+  const leaguesToQuery = getTeamScheduleCandidateLeagues(leagueSlug, catalogLeagues);
+  const leagueSchedules = await allSettledWithConcurrency(leaguesToQuery, TEAM_SCHEDULE_CONCURRENCY, (league) =>
+    fetchTeamScheduleLeague(league, teamId, signal)
   );
-  const scheduleRequests = [
+  const schedules = [
     ...leagueSchedules,
-    espnHttpClient.getJson<EspnTeamScheduleResponse>(buildTeamFixtureScheduleUrl(teamId), signal)
+    await settle(() => fetchTeamFixtureSchedule(teamId, signal))
   ];
-  const schedules = await Promise.allSettled(scheduleRequests);
   const fulfilledSchedules = schedules
     .filter((schedule): schedule is PromiseFulfilledResult<EspnTeamScheduleResponse> => schedule.status === 'fulfilled')
     .map((schedule) => schedule.value);
@@ -180,9 +197,35 @@ export async function fetchTeamSchedule(
     throw firstRejected?.reason;
   }
 
+  return mergeTeamScheduleResponses(fulfilledSchedules, catalogLeagues);
+}
+
+export async function fetchTeamScheduleLeague(
+  league: LeagueSummary,
+  teamId: string,
+  signal?: AbortSignal
+): Promise<EspnTeamScheduleResponse> {
+  const enrichedLeague = enrichLeagueMetadata(league);
+  return espnHttpClient
+    .getJson<EspnTeamScheduleResponse>(buildTeamScheduleUrl(enrichedLeague.slug, teamId), signal)
+    .then((response) => withScheduleSourceLeague(response, enrichedLeague));
+}
+
+export async function fetchTeamFixtureSchedule(
+  teamId: string,
+  signal?: AbortSignal
+): Promise<EspnTeamScheduleResponse> {
+  return espnHttpClient.getJson<EspnTeamScheduleResponse>(buildTeamFixtureScheduleUrl(teamId), signal);
+}
+
+export function mergeTeamScheduleResponses(
+  schedules: EspnTeamScheduleResponse[],
+  catalogLeagues: LeagueSummary[]
+): EspnTeamScheduleResponse {
   const events = enrichEventsWithConcreteLeagues(
-    fulfilledSchedules.flatMap((schedule) => schedule.events ?? [])
-  ).filter(hasConcreteLeague);
+    schedules.flatMap((schedule) => schedule.events ?? []),
+    catalogLeagues
+  ).filter(isRenderableScheduleEvent);
 
   return {
     leagues: uniqueLeaguesFromEvents(events),
@@ -192,10 +235,9 @@ export async function fetchTeamSchedule(
 
 function withScheduleSourceLeague(
   response: EspnTeamScheduleResponse,
-  leagueSlug: string,
-  leagueName: string
+  league: LeagueSummary
 ): EspnTeamScheduleResponse {
-  const sourceLeague = { slug: leagueSlug, name: leagueName };
+  const sourceLeague = { slug: league.slug, name: league.name, abbreviation: league.shortName };
 
   return {
     ...response,
@@ -207,7 +249,10 @@ function withScheduleSourceLeague(
   };
 }
 
-function enrichEventsWithConcreteLeagues(events: NonNullable<EspnTeamScheduleResponse['events']>): NonNullable<EspnTeamScheduleResponse['events']> {
+function enrichEventsWithConcreteLeagues(
+  events: NonNullable<EspnTeamScheduleResponse['events']>,
+  catalogLeagues: LeagueSummary[]
+): NonNullable<EspnTeamScheduleResponse['events']> {
   const leagueByEventId = new Map<string, NonNullable<EspnTeamScheduleResponse['events']>[number]['leagues']>();
 
   for (const event of events) {
@@ -226,17 +271,32 @@ function enrichEventsWithConcreteLeagues(events: NonNullable<EspnTeamScheduleRes
       return { ...event, leagues: concreteLeagues };
     }
 
-    const inferredLeague = inferLeagueFromTeamScheduleEvent(event);
+    const inferredLeague = inferLeagueFromTeamScheduleEvent(event, catalogLeagues);
     return inferredLeague ? { ...event, leagues: [inferredLeague] } : event;
   });
 }
 
 function hasConcreteLeague(event: NonNullable<EspnTeamScheduleResponse['events']>[number]): boolean {
-  return isSupportedLeagueSlug(event.leagues?.[0]?.slug);
+  return Boolean(event.leagues?.[0]?.slug);
+}
+
+function isRenderableScheduleEvent(event: NonNullable<EspnTeamScheduleResponse['events']>[number]): boolean {
+  const league = event.leagues?.[0];
+
+  if (!league?.slug) {
+    return false;
+  }
+
+  return !enrichLeagueMetadata({
+    slug: league.slug,
+    name: league.name ?? league.slug,
+    shortName: league.abbreviation
+  }).isExcludedFromTeamSchedule;
 }
 
 function inferLeagueFromTeamScheduleEvent(
-  event: NonNullable<EspnTeamScheduleResponse['events']>[number]
+  event: NonNullable<EspnTeamScheduleResponse['events']>[number],
+  catalogLeagues: LeagueSummary[]
 ): { slug: string; name: string; abbreviation?: string } | undefined {
   const text = [
     event.season?.displayName,
@@ -248,22 +308,43 @@ function inferLeagueFromTeamScheduleEvent(
     .join(' ')
     .toLowerCase();
 
-  const slug =
-    inferLeagueSlugFromText(text);
+  const slug = inferLeagueSlugFromText(text, catalogLeagues);
 
   if (!slug) {
     return undefined;
   }
 
-  const league = getLeagueBySlug(slug);
-  return {
+  const league = catalogLeagues.find((item) => item.slug === slug) ?? getLeagueBySlug(slug);
+  const enrichedLeague = enrichLeagueMetadata({
     slug: league.slug,
     name: league.name,
-    abbreviation: league.shortName
+    shortName: league.shortName
+  });
+
+  return {
+    slug: enrichedLeague.slug,
+    name: enrichedLeague.name,
+    abbreviation: enrichedLeague.shortName
   };
 }
 
-function inferLeagueSlugFromText(text: string): string | undefined {
+function inferLeagueSlugFromText(text: string, catalogLeagues: LeagueSummary[]): string | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  const staticSlug = inferStaticLeagueSlugFromText(text);
+  if (staticSlug) {
+    return staticSlug;
+  }
+
+  const normalizedText = normalizeLeagueText(text);
+  const sortedLeagues = [...catalogLeagues].sort((left, right) => right.name.length - left.name.length);
+
+  return sortedLeagues.find((league) => normalizedText.includes(normalizeLeagueText(league.name)))?.slug;
+}
+
+function inferStaticLeagueSlugFromText(text: string): string | undefined {
   if (!text) {
     return undefined;
   }
@@ -303,6 +384,10 @@ function inferLeagueSlugFromText(text: string): string | undefined {
   return undefined;
 }
 
+function normalizeLeagueText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
 function uniqueLeaguesFromEvents(
   events: NonNullable<EspnTeamScheduleResponse['events']>
 ): Array<{ slug?: string; name?: string; abbreviation?: string }> {
@@ -316,6 +401,59 @@ function uniqueLeaguesFromEvents(
   }
 
   return [...leagues.values()];
+}
+
+function mapEspnLeagueSummary(league: EspnLeague): LeagueSummary | undefined {
+  const slug = league.slug ?? parseLeagueSlugFromUrl(league.$ref);
+
+  if (!slug) {
+    return undefined;
+  }
+
+  return enrichLeagueMetadata({
+    slug,
+    name: league.name ?? league.displayName ?? slug,
+    shortName: league.abbreviation ?? league.shortName
+  });
+}
+
+function isLeagueSummary(value: LeagueSummary | undefined): value is LeagueSummary {
+  return Boolean(value?.slug && value.name);
+}
+
+function parseLeagueSlugFromUrl(url: string | undefined): string | undefined {
+  return url?.match(/\/leagues\/([^/?#]+)/)?.[1];
+}
+
+async function allSettledWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<Array<PromiseSettledResult<R>>> {
+  const results: Array<PromiseSettledResult<R>> = [];
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await settle(() => mapper(items[currentIndex]));
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+
+  return results;
+}
+
+async function settle<T>(task: () => Promise<T>): Promise<PromiseSettledResult<T>> {
+  try {
+    return { status: 'fulfilled', value: await task() };
+  } catch (reason) {
+    return { status: 'rejected', reason };
+  }
 }
 
 async function withResolvedVenue(
