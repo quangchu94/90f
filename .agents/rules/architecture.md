@@ -72,6 +72,7 @@ Use Pinia for:
 Client storage rules:
 
 - Persist lightweight UI preferences only, such as favorite leagues and selected fixture league.
+- Favorite leagues are shared UI state for Fixtures, Live, Standings, and Teams selectors.
 - Persist favorite teams as lightweight `{ leagueSlug, teamId }` entries.
 - Do not persist ESPN API responses in client storage.
 - Restore favorite leagues, selected fixture league, and favorite teams during store initialization.

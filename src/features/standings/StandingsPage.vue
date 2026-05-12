@@ -6,7 +6,11 @@
         <h1 class="mt-1 text-2xl font-black tracking-normal sm:text-3xl">Bảng xếp hạng</h1>
         <p class="mt-1 text-sm text-app-secondary">{{ leagueName }}</p>
       </div>
-      <LeagueRouteSelector :model-value="effectiveLeagueSlug" @update:model-value="handleLeagueChange" />
+      <LeagueRouteSelector
+        :model-value="effectiveLeagueSlug"
+        :leagues="fixturesStore.favoriteLeagues"
+        @update:model-value="handleLeagueChange"
+      />
     </section>
 
     <div v-if="isLoading" class="space-y-3">
@@ -41,8 +45,9 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { getLeagueBySlug, getLeagueShortName, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
+import { DEFAULT_LEAGUE_SLUG, getLeagueBySlug, getLeagueShortName, isPlausibleLeagueSlug } from '@/domain/leagues';
 import { useStandings } from '@/composables/useStandings';
+import { useFixturesStore } from '@/stores/fixturesStore';
 import LeagueRouteSelector from '@/components/football/LeagueRouteSelector.vue';
 import StateBlock from '@/components/common/StateBlock.vue';
 import StandingsGroupTable from './StandingsGroupTable.vue';
@@ -52,20 +57,32 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const fixturesStore = useFixturesStore();
+const favoriteFallbackLeagueSlug = computed(() => {
+  const favoriteSlugs = new Set(fixturesStore.favoriteLeagues.map((league) => league.slug));
+
+  if (favoriteSlugs.has(fixturesStore.selectedLeagueSlug)) {
+    return fixturesStore.selectedLeagueSlug;
+  }
+
+  return fixturesStore.favoriteLeagues[0]?.slug ?? DEFAULT_LEAGUE_SLUG;
+});
 const effectiveLeagueSlug = computed(() =>
-  isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
+  isPlausibleLeagueSlug(props.leagueSlug) ? props.leagueSlug : favoriteFallbackLeagueSlug.value
 );
 const { data: groups, isLoading, isError, refetch } = useStandings(effectiveLeagueSlug);
 const leagueName = computed(() => {
-  const league = getLeagueBySlug(effectiveLeagueSlug.value);
+  const league =
+    fixturesStore.favoriteLeagues.find((favorite) => favorite.slug === effectiveLeagueSlug.value) ??
+    getLeagueBySlug(effectiveLeagueSlug.value);
   return getLeagueShortName(league.slug, league.shortName, league.name);
 });
 
 watch(
   () => props.leagueSlug,
   (slug) => {
-    if (!isSupportedLeagueSlug(slug)) {
-      void router.replace({ name: 'standings', params: { leagueSlug: getSupportedLeagueFallback(slug) } });
+    if (!isPlausibleLeagueSlug(slug)) {
+      void router.replace({ name: 'standings', params: { leagueSlug: favoriteFallbackLeagueSlug.value } });
     }
   },
   { immediate: true }

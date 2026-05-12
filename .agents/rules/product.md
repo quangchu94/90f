@@ -8,6 +8,7 @@ Primary user goals:
 
 - Quickly see today's matches, upcoming fixtures, and recent results.
 - Filter by league, result/fixture mode, expandable date range, match status, and favorite competitions.
+- Use favorite competitions as the user-facing league selector source across fixtures, livescore, standings, and teams.
 - Open a match detail view with score, teams, time/status, venue, broadcast/meta, and summary data when available.
 - Read important match tags, penalty shootout totals, and concise goal qualifiers in match detail when ESPN provides enough data.
 - Knockout matches should show round tags such as `Tứ kết`, `Bán kết`, and `Chung kết` when ESPN provides stage/season metadata.
@@ -51,6 +52,7 @@ Avoid introducing a backend, server functions, database, auth provider, global e
 - Roster.
 - Team-specific schedule.
 - Favorite teams.
+- Standings and team list league selectors use the persisted favorite leagues list; favorite league management remains in the fixtures league picker.
 
 Implementation rules:
 

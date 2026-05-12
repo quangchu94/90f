@@ -1,6 +1,8 @@
 import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import { computed } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useFixturesStore } from '@/stores/fixturesStore';
 import TeamsPage from './TeamsPage.vue';
 
 const routerMock = vi.hoisted(() => ({
@@ -30,13 +32,18 @@ vi.mock('@/stores/preferencesStore', () => ({
 
 describe('TeamsPage', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     routerMock.push.mockClear();
     routerMock.replace.mockClear();
   });
 
-  it('replaces unsupported country cup routes with a supported league fallback', () => {
+  it('replaces invalid routes with a favorite league fallback', () => {
+    const store = useFixturesStore();
+    store.favoriteLeagues = [{ slug: 'usa.1', name: 'MLS', shortName: 'MLS' }];
+    store.selectedLeagueSlug = 'usa.1';
+
     mount(TeamsPage, {
-      props: { leagueSlug: 'esp.copa_del_rey' },
+      props: { leagueSlug: 'not-a-league' },
       global: {
         stubs: {
           LeagueRouteSelector: true,
@@ -48,7 +55,74 @@ describe('TeamsPage', () => {
 
     expect(routerMock.replace).toHaveBeenCalledWith({
       name: 'teams',
-      params: { leagueSlug: 'esp.1' }
+      params: { leagueSlug: 'usa.1' }
+    });
+  });
+
+  it('passes favorite leagues to the league selector', () => {
+    const store = useFixturesStore();
+    store.favoriteLeagues = [
+      { slug: 'usa.1', name: 'MLS', shortName: 'MLS' },
+      { slug: 'eng.1', name: 'Premier League', shortName: 'EPL' }
+    ];
+    store.selectedLeagueSlug = 'usa.1';
+
+    const wrapper = mount(TeamsPage, {
+      props: { leagueSlug: 'usa.1' },
+      global: {
+        stubs: {
+          LeagueRouteSelector: true,
+          StateBlock: true,
+          TeamCard: true
+        }
+      }
+    });
+
+    expect(wrapper.findComponent({ name: 'LeagueRouteSelector' }).props('leagues')).toEqual(store.favoriteLeagues);
+  });
+
+  it('does not redirect valid routes outside favorite leagues', () => {
+    const store = useFixturesStore();
+    store.favoriteLeagues = [{ slug: 'eng.1', name: 'Premier League', shortName: 'EPL' }];
+    store.selectedLeagueSlug = 'eng.1';
+
+    mount(TeamsPage, {
+      props: { leagueSlug: 'usa.1' },
+      global: {
+        stubs: {
+          LeagueRouteSelector: true,
+          StateBlock: true,
+          TeamCard: true
+        }
+      }
+    });
+
+    expect(routerMock.replace).not.toHaveBeenCalled();
+  });
+
+  it('pushes the selected favorite league route', async () => {
+    const store = useFixturesStore();
+    store.favoriteLeagues = [
+      { slug: 'usa.1', name: 'MLS', shortName: 'MLS' },
+      { slug: 'eng.1', name: 'Premier League', shortName: 'EPL' }
+    ];
+    store.selectedLeagueSlug = 'usa.1';
+
+    const wrapper = mount(TeamsPage, {
+      props: { leagueSlug: 'usa.1' },
+      global: {
+        stubs: {
+          StateBlock: true,
+          TeamCard: true
+        }
+      }
+    });
+
+    await wrapper.find('select').setValue('eng.1');
+
+    expect(routerMock.push).toHaveBeenCalledWith({
+      name: 'teams',
+      params: { leagueSlug: 'eng.1' }
     });
   });
 

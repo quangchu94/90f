@@ -59,6 +59,7 @@ Suggested palette:
 - League labels must not show rough slug-derived names like `German 1` when a curated or common name is known; use labels such as `Bundesliga`.
 - League labels must keep meaningful suffixes after a country prefix, for example `German 2. Bundesliga` should display as `2. Bundesliga`, not `2.`.
 - User-visible league labels should use the normalized `shortName` first, with normalized full `name` only as a fallback when `shortName` is missing.
+- Standings and Teams selectors should list favorite leagues, while preserving valid deep-link route leagues even when the route league is not currently a favorite.
 - League picker groups should be collapsible by country/continent/world; search results should auto-expand matching groups.
 - League picker should prefer enriched ESPN detail `shortName` labels such as `EFL Championship` and `Italian Serie B` over slug-derived fallbacks like `English 2` or `Italian 2`.
 - League picker chips and badges must not render weak ESPN abbreviations such as `2.` when a clearer normalized label like `2. Bundesliga` is available.

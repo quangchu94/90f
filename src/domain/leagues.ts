@@ -48,6 +48,10 @@ export function isSupportedLeagueSlug(slug: string | undefined): slug is string 
   return Boolean(slug && INITIAL_LEAGUES.some((league) => league.slug === slug));
 }
 
+export function isPlausibleLeagueSlug(slug: string | undefined): slug is string {
+  return Boolean(slug && /^[a-z]+(?:\.[a-z0-9_]+)+$/.test(slug));
+}
+
 export function getSupportedLeagueFallback(slug: string | undefined): string {
   const prefix = slug?.split('.')[0];
 

@@ -6,7 +6,7 @@
       :value="modelValue"
       @change="handleChange"
     >
-      <option v-for="league in leagues" :key="league.slug" :value="league.slug">
+      <option v-for="league in selectorLeagues" :key="league.slug" :value="league.slug">
         {{ getLeagueShortName(league.slug, league.shortName, league.name) }}
       </option>
     </select>
@@ -14,17 +14,28 @@
 </template>
 
 <script setup lang="ts">
-import { getLeagueShortName, INITIAL_LEAGUES } from '@/domain/leagues';
+import { computed } from 'vue';
+import { getLeagueBySlug, getLeagueShortName, INITIAL_LEAGUES, mergeLeagueSummaries } from '@/domain/leagues';
+import type { LeagueSummary } from '@/domain/models';
 
-defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string;
-}>();
+  leagues?: LeagueSummary[];
+}>(), {
+  leagues: () => INITIAL_LEAGUES
+});
 
 const emit = defineEmits<{
   'update:modelValue': [leagueSlug: string];
 }>();
 
-const leagues = INITIAL_LEAGUES;
+const selectorLeagues = computed(() => {
+  if (props.leagues.some((league) => league.slug === props.modelValue)) {
+    return props.leagues;
+  }
+
+  return mergeLeagueSummaries([getLeagueBySlug(props.modelValue), ...props.leagues]);
+});
 
 function handleChange(event: Event): void {
   emit('update:modelValue', (event.target as HTMLSelectElement).value);

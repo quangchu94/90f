@@ -6,6 +6,7 @@
 - Combined results/fixtures screens query the single selected league/date pairs and filter normalized matches by mode.
 - Fixtures has exactly one selected league at a time.
 - Favorite leagues are local-only, persisted in localStorage, and can be added/removed from the ESPN soccer catalog popup.
+- Standings and Teams selectors must use the persisted favorite leagues list from client state and should not fetch the ESPN catalog just to render selector options.
 - Favorite league storage must be versioned; legacy storage should seed or merge the 8 default leagues, while current-version storage must respect user unfavorite choices.
 - The league popup groups by World, continent/confederation, then country.
 - The league popup may enrich catalog rows with league detail requests, but detail failures must not block or fail the full picker list.
