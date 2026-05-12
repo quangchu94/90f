@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchSoccerLeagues, fetchTeamSchedule, espnHttpClient } from './espnClient';
+import {
+  espnHttpClient,
+  fetchSoccerLeagueDetail,
+  fetchSoccerLeagueDetailsForPicker,
+  fetchSoccerLeagues,
+  fetchSoccerLeaguesForPicker,
+  fetchTeamDetail,
+  fetchTeamSchedule
+} from './espnClient';
 import type { EspnTeamScheduleResponse } from './espnTypes';
 
 describe('espn client', () => {
@@ -42,12 +50,150 @@ describe('espn client', () => {
 
     expect(leagues).toContainEqual(expect.objectContaining({ slug: 'usa.1', name: 'USA 1' }));
     expect(leagues).toContainEqual(
-      expect.objectContaining({ slug: 'esp.1', name: 'Spanish LALIGA', shortName: 'LaLiga' })
+      expect.objectContaining({ slug: 'esp.1', name: 'La Liga', shortName: 'LaLiga' })
     );
     expect(getJsonSpy).toHaveBeenCalledTimes(1);
     expect(getJsonSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('/sports/soccer/leagues/usa.1'),
       expect.anything()
+    );
+  });
+
+  it('fetches soccer league detail from the core endpoint', async () => {
+    vi.spyOn(espnHttpClient, 'getJson').mockResolvedValue({
+      slug: 'eng.2',
+      name: 'English League Championship',
+      displayName: 'English League Championship',
+      abbreviation: 'EFL Championship',
+      shortName: 'EFL Championship'
+    });
+
+    const league = await fetchSoccerLeagueDetail('eng.2');
+
+    expect(league).toMatchObject({
+      slug: 'eng.2',
+      name: 'English League Championship',
+      shortName: 'EFL Championship'
+    });
+    expect(espnHttpClient.getJson).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.2?lang=en&region=us',
+      undefined
+    );
+  });
+
+  it('enriches soccer leagues for picker with detail short names and tolerates detail failures', async () => {
+    vi.spyOn(espnHttpClient, 'getJson').mockImplementation((url: string) => {
+      if (url.includes('/leagues?limit=1000')) {
+        return Promise.resolve({
+          items: [
+            {
+              $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.2?lang=en&region=us'
+            },
+            {
+              $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/ita.2?lang=en&region=us'
+            },
+            {
+              $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/usa.1?lang=en&region=us'
+            }
+          ]
+        });
+      }
+
+      if (url.includes('/leagues/eng.2?')) {
+        return Promise.resolve({
+          slug: 'eng.2',
+          name: 'English League Championship',
+          abbreviation: 'EFL Championship',
+          shortName: 'EFL Championship'
+        });
+      }
+
+      if (url.includes('/leagues/ita.2?')) {
+        return Promise.resolve({
+          slug: 'ita.2',
+          name: 'Italian Serie B',
+          abbreviation: 'Italian Serie B',
+          shortName: 'Italian Serie B'
+        });
+      }
+
+      return Promise.reject(new Error('Detail unavailable'));
+    });
+
+    const leagues = await fetchSoccerLeaguesForPicker();
+
+    expect(leagues).toContainEqual(
+      expect.objectContaining({ slug: 'eng.2', shortName: 'EFL Championship' })
+    );
+    expect(leagues).toContainEqual(
+      expect.objectContaining({ slug: 'ita.2', shortName: 'Italian Serie B' })
+    );
+    expect(leagues).toContainEqual(
+      expect.objectContaining({ slug: 'usa.1', name: 'USA 1' })
+    );
+  });
+
+  it('fetches picker league details independently so UI can render catalog data first', async () => {
+    vi.spyOn(espnHttpClient, 'getJson').mockImplementation((url: string) => {
+      if (url.includes('/leagues/eng.2?')) {
+        return Promise.resolve({
+          slug: 'eng.2',
+          name: 'English League Championship',
+          shortName: 'EFL Championship'
+        });
+      }
+
+      return Promise.reject(new Error('Detail unavailable'));
+    });
+
+    const leagues = await fetchSoccerLeagueDetailsForPicker([
+      { slug: 'eng.2', name: 'English 2' },
+      { slug: 'usa.1', name: 'USA 1' }
+    ]);
+
+    expect(leagues).toEqual([
+      expect.objectContaining({ slug: 'eng.2', shortName: 'EFL Championship' })
+    ]);
+    expect(espnHttpClient.getJson).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.2?lang=en&region=us',
+      undefined
+    );
+    expect(espnHttpClient.getJson).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/usa.1?lang=en&region=us',
+      undefined
+    );
+  });
+
+
+  it('prefers site team detail data before falling back to core team detail', async () => {
+    const getJsonSpy = vi.spyOn(espnHttpClient, 'getJson').mockResolvedValue({
+      team: {
+        id: '363',
+        displayName: 'Chelsea'
+      },
+      nextEvent: [
+        {
+          competitions: [
+            {
+              neutralSite: false,
+              venue: { fullName: 'Stamford Bridge' },
+              competitors: [
+                { id: '363', homeAway: 'home', team: { id: '363', displayName: 'Chelsea' } },
+                { id: '367', homeAway: 'away', team: { id: '367', displayName: 'Tottenham Hotspur' } }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const team = await fetchTeamDetail('eng.1', '363', undefined);
+
+    expect(team.nextEvent?.[0].competitions?.[0].venue?.fullName).toBe('Stamford Bridge');
+    expect(getJsonSpy).toHaveBeenCalledWith('/api/espn/site/sports/soccer/eng.1/teams/363', undefined);
+    expect(getJsonSpy).not.toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.1/teams/363',
+      undefined
     );
   });
 
@@ -88,7 +234,7 @@ describe('espn client', () => {
     ]);
     expect(schedule.events?.[0].leagues?.[0]).toMatchObject({
       slug: 'fra.1',
-      name: 'French Ligue 1'
+      name: 'Ligue 1'
     });
     expect(schedule.events?.[1].leagues?.[0]).toMatchObject({
       slug: 'uefa.champions',

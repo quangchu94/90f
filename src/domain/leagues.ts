@@ -1,6 +1,15 @@
 import type { LeagueSummary } from './models';
 
 const CURATED_LEAGUE_NAMES: Record<string, { name: string; shortName?: string }> = {
+  'eng.1': { name: 'Premier League', shortName: 'EPL' },
+  'eng.2': { name: 'English League Championship', shortName: 'EFL Championship' },
+  'esp.1': { name: 'La Liga', shortName: 'LaLiga' },
+  'ger.1': { name: 'Bundesliga', shortName: 'Bundesliga' },
+  'ger.2': { name: '2. Bundesliga', shortName: '2. Bundesliga' },
+  'ita.1': { name: 'Serie A', shortName: 'Serie A' },
+  'ita.2': { name: 'Italian Serie B', shortName: 'Italian Serie B' },
+  'fra.1': { name: 'Ligue 1', shortName: 'Ligue 1' },
+  'ger.dfb_pokal': { name: 'German Cup', shortName: 'DFB Pokal' },
   'esp.copa_del_rey': { name: 'Spanish Copa del Rey', shortName: 'Copa del Rey' }
 };
 
@@ -11,6 +20,8 @@ const COUNTRY_NAME_PREFIXES: Record<string, string> = {
   ita: 'Italian',
   fra: 'French'
 };
+
+const PRIORITY_LEAGUE_PREFIXES = new Set(['fifa', 'uefa', 'eng', 'ger', 'esp', 'ita', 'fra']);
 
 export const INITIAL_LEAGUES: LeagueSummary[] = [
   enrichLeagueMetadata({ slug: 'fifa.world', name: 'FIFA World Cup', shortName: 'World Cup' }),
@@ -88,15 +99,28 @@ export function getLeagueShortName(
 ): string {
   const league = INITIAL_LEAGUES.find((item) => item.slug === slug);
   const enrichedLeague = enrichLeagueMetadata({ slug, name: fallbackName ?? slug, shortName: abbreviation });
-  return league?.shortName ?? enrichedLeague.shortName ?? abbreviation ?? enrichedLeague.name ?? fallbackName ?? slug;
+  const shortName = league?.shortName ?? enrichedLeague.shortName ?? abbreviation;
+
+  return isWeakLeagueShortName(shortName, enrichedLeague.name)
+    ? enrichedLeague.name ?? fallbackName ?? slug
+    : shortName ?? enrichedLeague.name ?? fallbackName ?? slug;
+}
+
+export function isPriorityLeagueSlug(slug: string): boolean {
+  return PRIORITY_LEAGUE_PREFIXES.has(slug.split('.')[0] ?? '');
+}
+
+export function getPriorityLeagues(leagues: LeagueSummary[]): LeagueSummary[] {
+  return mergeLeagueSummaries(leagues).filter((league) => isPriorityLeagueSlug(league.slug));
 }
 
 export function enrichLeagueMetadata(league: LeagueSummary): LeagueSummary {
   const curatedLeague = CURATED_LEAGUE_NAMES[league.slug];
+  const normalizedName = normalizeLeagueDisplayName(league);
   const normalizedLeague = {
     ...league,
-    name: shouldInferLeagueName(league) ? inferLeagueNameFromSlug(league.slug) : league.name,
-    shortName: league.shortName ?? curatedLeague?.shortName
+    name: normalizedName,
+    shortName: normalizeLeagueShortName(league.shortName ?? curatedLeague?.shortName, normalizedName)
   };
   const text = `${normalizedLeague.slug} ${normalizedLeague.name} ${normalizedLeague.shortName ?? ''}`.toLowerCase();
 
@@ -150,6 +174,57 @@ export function enrichLeagueMetadata(league: LeagueSummary): LeagueSummary {
 
 function shouldInferLeagueName(league: LeagueSummary): boolean {
   return !league.name || league.name === league.slug || Boolean(CURATED_LEAGUE_NAMES[league.slug]);
+}
+
+function normalizeLeagueDisplayName(league: LeagueSummary): string {
+  const curatedLeague = CURATED_LEAGUE_NAMES[league.slug];
+
+  if (curatedLeague) {
+    return curatedLeague.name;
+  }
+
+  if (shouldInferLeagueName(league)) {
+    return inferLeagueNameFromSlug(league.slug);
+  }
+
+  return trimCountryPrefixFromLeagueName(league.name, league.slug);
+}
+
+function trimCountryPrefixFromLeagueName(name: string, slug: string): string {
+  const prefix = slug.split('.')[0];
+  const countryPrefix = COUNTRY_NAME_PREFIXES[prefix];
+
+  if (!countryPrefix || !name.startsWith(`${countryPrefix} `)) {
+    return name;
+  }
+
+  const trimmedName = name.slice(countryPrefix.length + 1).trim();
+  const genericNames = new Set(['Cup', 'Super Cup', 'League Cup']);
+
+  return trimmedName && !genericNames.has(trimmedName) ? trimmedName : name;
+}
+
+function normalizeLeagueShortName(shortName: string | undefined, fullName: string): string | undefined {
+  if (!shortName) {
+    return fullName;
+  }
+
+  return isWeakLeagueShortName(shortName, fullName) ? fullName : shortName;
+}
+
+function isWeakLeagueShortName(shortName: string | undefined, fullName: string | undefined): boolean {
+  if (!shortName || !fullName) {
+    return false;
+  }
+
+  const normalizedShortName = shortName.trim();
+  const normalizedFullName = fullName.trim();
+
+  return (
+    normalizedShortName.length <= 2 &&
+    normalizedFullName.length > normalizedShortName.length &&
+    /[a-z]/i.test(normalizedFullName)
+  );
 }
 
 function inferLeagueNameFromSlug(slug: string): string {
@@ -218,6 +293,54 @@ export function sortLeagueGroups(
     (left, right) =>
       (order.get(left.label) ?? 500) - (order.get(right.label) ?? 500) ||
       left.label.localeCompare(right.label)
+  );
+}
+
+export function sortLeaguesWithinGroup(leagues: LeagueSummary[]): LeagueSummary[] {
+  return [...leagues].sort((left, right) => {
+    const leftRank = getLeagueSortRank(left);
+    const rightRank = getLeagueSortRank(right);
+
+    return (
+      leftRank.category - rightRank.category ||
+      leftRank.number - rightRank.number ||
+      getLeagueShortName(left.slug, left.shortName, left.name).localeCompare(
+        getLeagueShortName(right.slug, right.shortName, right.name)
+      ) ||
+      left.slug.localeCompare(right.slug)
+    );
+  });
+}
+
+function getLeagueSortRank(league: LeagueSummary): { category: number; number: number } {
+  const suffix = league.slug.split('.').slice(1).join('.');
+  const numericSuffix = Number(suffix);
+
+  if (Number.isFinite(numericSuffix) && /^\d+$/.test(suffix)) {
+    return { category: 0, number: numericSuffix };
+  }
+
+  if (isNationalCupSlug(suffix)) {
+    return { category: 100, number: 0 };
+  }
+
+  if (suffix.includes('league_cup')) {
+    return { category: 110, number: 0 };
+  }
+
+  if (suffix.includes('super_cup') || suffix.includes('supercup')) {
+    return { category: 120, number: 0 };
+  }
+
+  return { category: 200, number: 0 };
+}
+
+function isNationalCupSlug(suffix: string): boolean {
+  return (
+    suffix === 'fa' ||
+    suffix === 'dfb_pokal' ||
+    suffix === 'copa_del_rey' ||
+    (suffix.includes('cup') && !suffix.includes('league_cup') && !suffix.includes('super_cup'))
   );
 }
 

@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { getLeagueBySlug, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
+import { getLeagueBySlug, getLeagueShortName, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
 import { useStandings } from '@/composables/useStandings';
 import LeagueRouteSelector from '@/components/football/LeagueRouteSelector.vue';
 import StateBlock from '@/components/common/StateBlock.vue';
@@ -56,7 +56,10 @@ const effectiveLeagueSlug = computed(() =>
   isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
 );
 const { data: groups, isLoading, isError, refetch } = useStandings(effectiveLeagueSlug);
-const leagueName = computed(() => getLeagueBySlug(effectiveLeagueSlug.value).name);
+const leagueName = computed(() => {
+  const league = getLeagueBySlug(effectiveLeagueSlug.value);
+  return getLeagueShortName(league.slug, league.shortName, league.name);
+});
 
 watch(
   () => props.leagueSlug,

@@ -21,7 +21,9 @@ Use these endpoint families:
 - Treat ESPN fields as optional unless proven stable.
 - Use `YYYYMMDD` for date query params.
 - Standings for soccer should use `/apis/v2/`, not `/apis/site/v2/`.
-- Team detail should prefer Core API `https://sports.core.api.espn.com/v2/sports/soccer/leagues/{league}/teams/{teamId}` for venue data, with site v2 fallback.
+- Team detail should prefer Site API `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams/{teamId}`.
+- Core team venue data can be wrong for soccer clubs; use Core team detail only as a fallback and do not let it override Site API venue or a home `nextEvent` venue.
+- If team detail has no reliable venue, Team detail may infer the stadium from the team's non-neutral home schedule matches instead of making a separate venue-only request.
 
 ## Proxy And CORS
 
@@ -38,9 +40,14 @@ Use these endpoint families:
 
 - ESPN soccer catalog must not eager-dereference every league `$ref`.
 - Parse league slug directly from `$ref` and enrich metadata locally.
+- League picker UI may enrich catalog rows through `/sports/soccer/leagues/{slug}?lang=en&region=us` with bounded concurrency to get reliable `shortName`.
+- League picker detail enrichment must run in the background after lightweight catalog/default leagues are visible; it must not block the popup's initial render.
 - If a catalog item has only `$ref`, parse the slug and infer a readable display name locally; do not show raw slugs such as `esp.copa_del_rey` in the UI.
 - Keep curated local names for common competitions when ESPN catalog omits display data, for example `esp.copa_del_rey` -> `Spanish Copa del Rey`.
-- Do not request every `/sports/soccer/leagues/{slug}` detail URL just to build schedule scope.
+- Keep curated local names for common league slugs when ESPN catalog only provides `$ref`, for example `ger.1` -> `Bundesliga`.
+- ESPN catalog abbreviations can be too short to identify a competition, for example `ger.2` may expose `2.`; prefer curated/local normalized labels such as `2. Bundesliga`.
+- Normalize ESPN `shortName`/`abbreviation` before UI use; full `name` remains useful for search, inference, and debugging but should not be the default display label.
+- Do not request every `/sports/soccer/leagues/{slug}` detail URL just to build schedule scope; schedule scope must use the lightweight catalog path.
 - League metadata may use static local inference for country, confederation, world, and misc/friendly classification.
 - Match stage labels, penalty shootout scores, and goal type metadata are not stable across ESPN endpoints; parse them defensively from structured competitor fields, notes, season/stage fields, status detail text, and event/key-event text.
 - Knockout round labels in match summary can appear in `header.season.name/displayName`, for example `2025-26 English FA Cup, Final`, `Semifinals`, or `Quarterfinals`.

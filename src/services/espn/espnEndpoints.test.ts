@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
+  buildSoccerLeagueDetailUrl,
   buildSoccerLeaguesUrl,
   buildTeamFixtureScheduleUrl
 } from './espnEndpoints';
@@ -29,5 +30,11 @@ describe('espn endpoints', () => {
 
   it('builds core soccer league catalog URLs', () => {
     expect(buildSoccerLeaguesUrl()).toBe('/api/espn/core/sports/soccer/leagues?limit=1000');
+  });
+
+  it('builds core soccer league detail URLs', () => {
+    expect(buildSoccerLeagueDetailUrl('eng.2')).toBe(
+      '/api/espn/core/sports/soccer/leagues/eng.2?lang=en&region=us'
+    );
   });
 });

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_LEAGUE_SLUG, INITIAL_LEAGUES } from '@/domain/leagues';
 import {
   FAVORITE_LEAGUES_STORAGE_KEY,
+  FAVORITE_LEAGUES_VERSION_STORAGE_KEY,
   SELECTED_LEAGUES_STORAGE_KEY,
   SELECTED_LEAGUE_STORAGE_KEY,
   useFixturesStore
@@ -23,6 +24,60 @@ describe('fixturesStore', () => {
 
     expect(store.favoriteLeagues).toEqual(INITIAL_LEAGUES);
     expect(store.selectedLeagueSlug).toBe(DEFAULT_LEAGUE_SLUG);
+  });
+
+  it('merges default favorites into legacy stored favorites', () => {
+    window.localStorage.setItem(
+      FAVORITE_LEAGUES_STORAGE_KEY,
+      JSON.stringify([{ slug: 'ger.1', name: 'German 1' }])
+    );
+    setActivePinia(createPinia());
+
+    const store = useFixturesStore();
+
+    expect(store.favoriteLeagues).toHaveLength(INITIAL_LEAGUES.length);
+    expect(store.favoriteLeagues.map((league) => league.slug)).toEqual(
+      expect.arrayContaining(INITIAL_LEAGUES.map((league) => league.slug))
+    );
+    expect(store.favoriteLeagues.find((league) => league.slug === 'ger.1')).toMatchObject({
+      name: 'Bundesliga'
+    });
+  });
+
+  it('respects current-version stored favorites after unfavorite operations', () => {
+    window.localStorage.setItem(
+      FAVORITE_LEAGUES_STORAGE_KEY,
+      JSON.stringify([{ slug: 'eng.1', name: 'Premier League' }])
+    );
+    window.localStorage.setItem(FAVORITE_LEAGUES_VERSION_STORAGE_KEY, JSON.stringify(2));
+    window.localStorage.setItem(SELECTED_LEAGUE_STORAGE_KEY, JSON.stringify('eng.1'));
+    setActivePinia(createPinia());
+
+    const store = useFixturesStore();
+
+    expect(store.favoriteLeagues.map((league) => league.slug)).toEqual(['eng.1']);
+    expect(store.selectedLeagueSlug).toBe('eng.1');
+  });
+
+  it('normalizes weak stored favorite league labels', () => {
+    window.localStorage.setItem(
+      FAVORITE_LEAGUES_STORAGE_KEY,
+      JSON.stringify([{ slug: 'ger.2', name: 'ger.2', shortName: '2.' }])
+    );
+    window.localStorage.setItem(FAVORITE_LEAGUES_VERSION_STORAGE_KEY, JSON.stringify(2));
+    window.localStorage.setItem(SELECTED_LEAGUE_STORAGE_KEY, JSON.stringify('ger.2'));
+    setActivePinia(createPinia());
+
+    const store = useFixturesStore();
+
+    expect(store.favoriteLeagues).toEqual([
+      expect.objectContaining({
+        slug: 'ger.2',
+        name: '2. Bundesliga',
+        shortName: '2. Bundesliga'
+      })
+    ]);
+    expect(store.selectedLeagueSlug).toBe('ger.2');
   });
 
   it('migrates legacy selected league arrays to a single selected league', () => {
@@ -86,6 +141,7 @@ describe('fixturesStore', () => {
       FAVORITE_LEAGUES_STORAGE_KEY,
       JSON.stringify([{ slug: 'eng.1', name: 'Premier League' }])
     );
+    window.localStorage.setItem(FAVORITE_LEAGUES_VERSION_STORAGE_KEY, JSON.stringify(2));
     window.localStorage.setItem(SELECTED_LEAGUE_STORAGE_KEY, JSON.stringify('eng.1'));
     setActivePinia(createPinia());
     const store = useFixturesStore();

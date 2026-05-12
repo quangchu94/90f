@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { getLeagueBySlug, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
+import { getLeagueBySlug, getLeagueShortName, getSupportedLeagueFallback, isSupportedLeagueSlug } from '@/domain/leagues';
 import { useTeams } from '@/composables/useTeams';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import LeagueRouteSelector from '@/components/football/LeagueRouteSelector.vue';
@@ -74,7 +74,10 @@ const effectiveLeagueSlug = computed(() =>
   isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
 );
 const { data: teams, isLoading, isError, refetch } = useTeams(effectiveLeagueSlug);
-const leagueName = computed(() => getLeagueBySlug(effectiveLeagueSlug.value).name);
+const leagueName = computed(() => {
+  const league = getLeagueBySlug(effectiveLeagueSlug.value);
+  return getLeagueShortName(league.slug, league.shortName, league.name);
+});
 const favoriteTeams = computed(() =>
   (teams.value ?? []).filter((team) => preferences.isFavoriteTeam(effectiveLeagueSlug.value, team.id))
 );

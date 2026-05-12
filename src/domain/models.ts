@@ -99,6 +99,7 @@ export interface FootballMatch {
   };
   importanceLabel?: string;
   venue?: string;
+  neutralSite?: boolean;
 }
 
 export interface MatchDetail extends FootballMatch {

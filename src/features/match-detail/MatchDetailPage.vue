@@ -21,7 +21,7 @@
       <div class="rounded border border-app-border bg-app-surface p-4 shadow-soft sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p class="text-sm font-semibold text-app-amber">{{ match.leagueName }}</p>
+            <p class="text-sm font-semibold text-app-amber">{{ leagueLabel }}</p>
             <h1 class="mt-1 text-xl font-black sm:text-2xl">{{ match.homeTeam.name }} vs {{ match.awayTeam.name }}</h1>
           </div>
           <div class="flex flex-wrap items-center justify-end gap-2">
@@ -129,6 +129,7 @@
 import { computed, toRefs } from 'vue';
 import { useRoute } from 'vue-router';
 import type { MatchEvent, MatchEventType } from '@/domain/models';
+import { getLeagueShortName } from '@/domain/leagues';
 import { useMatchSummary } from '@/composables/useMatchSummary';
 import { formatKickoffDateTime } from '@/utils/date';
 import StatusBadge from '@/components/football/StatusBadge.vue';
@@ -159,6 +160,11 @@ const attendanceLabel = computed(() =>
 
 const broadcastLabel = computed(() =>
   match.value?.broadcasts.length ? match.value.broadcasts.join(', ') : 'Chưa có dữ liệu'
+);
+const leagueLabel = computed(() =>
+  match.value
+    ? match.value.leagueShortName ?? getLeagueShortName(match.value.leagueSlug, undefined, match.value.leagueName)
+    : ''
 );
 
 function scoreLabel(score: number | undefined): string {

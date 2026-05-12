@@ -91,6 +91,13 @@ describe('MatchDetailPage', () => {
     expect(wrapper.text()).toContain('Pen: 4 - 5');
   });
 
+  it('uses the league short label in the header', () => {
+    const wrapper = mountPage();
+
+    expect(wrapper.text()).toContain('LaLiga');
+    expect(wrapper.text()).not.toContain('Spanish LALIGA');
+  });
+
   it('uses returnTo query for the back link', () => {
     routerMock.route.query = { returnTo: '/team/esp.1/83?tab=results&league=esp.1' };
 

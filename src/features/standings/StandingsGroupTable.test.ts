@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import StandingsGroupTable from './StandingsGroupTable.vue';
 
 describe('StandingsGroupTable', () => {
-  it('uses a fixed shared column layout for standings groups', () => {
+  it('uses a compact fixed layout for standings groups without horizontal min-width', () => {
     const wrapper = mount(StandingsGroupTable, {
       props: {
         leagueSlug: 'fifa.world',
@@ -33,7 +33,30 @@ describe('StandingsGroupTable', () => {
     });
 
     expect(wrapper.find('table').classes()).toContain('table-fixed');
+    expect(wrapper.find('table').classes()).not.toContain('min-w-[42rem]');
     expect(wrapper.findAll('col')).toHaveLength(8);
+    expect(wrapper.find('col').classes()).toContain('w-7');
+  });
+
+  it('renders all key standings headers in the compact table', () => {
+    const wrapper = mount(StandingsGroupTable, {
+      props: {
+        leagueSlug: 'fifa.world',
+        group: {
+          id: 'a',
+          name: 'Group A',
+          rows: [makeRow('1', 'Brazil', 1)]
+        }
+      },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+    const headers = wrapper.findAll('thead th').map((header) => header.text());
+
+    expect(headers).toEqual(['#', 'Đội', 'Tr', 'T', 'H', 'B', 'HS', 'Đ']);
   });
 
   it('renders rows sorted by ESPN rank even if input rows are unordered', () => {

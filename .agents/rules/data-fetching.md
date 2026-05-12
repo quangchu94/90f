@@ -6,7 +6,10 @@
 - Combined results/fixtures screens query the single selected league/date pairs and filter normalized matches by mode.
 - Fixtures has exactly one selected league at a time.
 - Favorite leagues are local-only, persisted in localStorage, and can be added/removed from the ESPN soccer catalog popup.
+- Favorite league storage must be versioned; legacy storage should seed or merge the 8 default leagues, while current-version storage must respect user unfavorite choices.
 - The league popup groups by World, continent/confederation, then country.
+- The league popup may enrich catalog rows with league detail requests, but detail failures must not block or fail the full picker list.
+- The league popup should render progressively: show default/favorite/priority leagues first, then merge enriched full-catalog data from background detail requests.
 - Keep one selected league active after unfavorite operations.
 - The fixtures load-more action increases the active date range by 10 days per click.
 - `Kết quả` shows only finished matches for today and previous days in GMT+7.
@@ -32,6 +35,7 @@
 - All-fixture events infer league from `event.season.displayName` or `event.seasonType.name`.
 - Unknown all-fixture events must not fallback to the route league.
 - Team detail schedule/results should render partial data as soon as individual league schedule requests return; do not wait for every scoped schedule endpoint to settle before showing the first matches.
+- Team schedule composables should expose fetching/updating state separately from loading-with-no-data so UI can avoid showing empty states while partial requests are still pending.
 
 ## Standings
 

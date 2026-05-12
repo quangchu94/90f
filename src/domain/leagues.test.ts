@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   enrichLeagueMetadata,
+  getLeagueShortName,
   getSupportedLeagueFallback,
-  getTeamScheduleCandidateLeagues
+  getTeamScheduleCandidateLeagues,
+  sortLeaguesWithinGroup
 } from './leagues';
 
 describe('league metadata', () => {
@@ -42,6 +44,36 @@ describe('league metadata', () => {
   });
 
   it('uses curated and humanized names instead of raw slugs', () => {
+    expect(enrichLeagueMetadata({ slug: 'ger.1', name: 'ger.1' })).toMatchObject({
+      name: 'Bundesliga',
+      shortName: 'Bundesliga'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ger.1', name: 'German Bundesliga' })).toMatchObject({
+      name: 'Bundesliga'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ger.2', name: 'German 2. Bundesliga' })).toMatchObject({
+      name: '2. Bundesliga',
+      shortName: '2. Bundesliga'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ger.2', name: 'ger.2', shortName: '2.' })).toMatchObject({
+      name: '2. Bundesliga',
+      shortName: '2. Bundesliga'
+    });
+    expect(enrichLeagueMetadata({ slug: 'eng.2', name: 'eng.2' })).toMatchObject({
+      name: 'English League Championship',
+      shortName: 'EFL Championship'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ita.2', name: 'ita.2' })).toMatchObject({
+      name: 'Italian Serie B',
+      shortName: 'Italian Serie B'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ger.dfb_pokal', name: 'ger.dfb_pokal' })).toMatchObject({
+      name: 'German Cup',
+      shortName: 'DFB Pokal'
+    });
+    expect(enrichLeagueMetadata({ slug: 'ger.unknown_cup', name: 'German Cup' })).toMatchObject({
+      name: 'German Cup'
+    });
     expect(enrichLeagueMetadata({ slug: 'esp.copa_del_rey', name: 'esp.copa_del_rey' })).toMatchObject({
       name: 'Spanish Copa del Rey',
       shortName: 'Copa del Rey'
@@ -50,8 +82,14 @@ describe('league metadata', () => {
       name: 'Spanish Super Cup'
     });
     expect(enrichLeagueMetadata({ slug: 'usa.1', name: 'usa.1' })).toMatchObject({
-      name: 'USA 1'
+      name: 'USA 1',
+      shortName: 'USA 1'
     });
+    expect(enrichLeagueMetadata({ slug: 'eng.2', name: 'English Championship' })).toMatchObject({
+      name: 'English League Championship',
+      shortName: 'EFL Championship'
+    });
+    expect(getLeagueShortName('ger.2', '2.', 'German 2. Bundesliga')).toBe('2. Bundesliga');
   });
 
   it('falls back unsupported route leagues to a supported league in the same family', () => {
@@ -76,5 +114,24 @@ describe('league metadata', () => {
       'uefa.champions',
       'fifa.world'
     ]);
+  });
+
+  it('sorts leagues inside a country group by natural competition order', () => {
+    expect(
+      sortLeaguesWithinGroup([
+        { slug: 'eng.league_cup', name: 'English League Cup' },
+        { slug: 'eng.fa', name: 'English FA Cup' },
+        { slug: 'eng.2', name: 'English League Championship' },
+        { slug: 'eng.1', name: 'Premier League' }
+      ]).map((league) => league.slug)
+    ).toEqual(['eng.1', 'eng.2', 'eng.fa', 'eng.league_cup']);
+
+    expect(
+      sortLeaguesWithinGroup([
+        { slug: 'ger.dfb_pokal', name: 'German Cup' },
+        { slug: 'ger.2', name: 'German 2. Bundesliga' },
+        { slug: 'ger.1', name: 'German Bundesliga' }
+      ]).map((league) => league.slug)
+    ).toEqual(['ger.1', 'ger.2', 'ger.dfb_pokal']);
   });
 });

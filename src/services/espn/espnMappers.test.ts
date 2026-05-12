@@ -292,6 +292,48 @@ describe('espn mappers', () => {
     });
   });
 
+  it('uses home next event venue for team detail when explicit venue is missing', () => {
+    const team = mapTeamDetailResponse(
+      {
+        team: {
+          id: '363',
+          displayName: 'Chelsea',
+          shortDisplayName: 'Chelsea'
+        },
+        nextEvent: [
+          {
+            competitions: [
+              {
+                neutralSite: false,
+                venue: { fullName: 'Stamford Bridge' },
+                competitors: [
+                  {
+                    id: '363',
+                    homeAway: 'home',
+                    team: { id: '363', displayName: 'Chelsea', shortDisplayName: 'Chelsea' }
+                  },
+                  {
+                    id: '367',
+                    homeAway: 'away',
+                    team: { id: '367', displayName: 'Tottenham Hotspur', shortDisplayName: 'Spurs' }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      'eng.1',
+      '363'
+    );
+
+    expect(team).toMatchObject({
+      id: '363',
+      name: 'Chelsea',
+      venue: 'Stamford Bridge'
+    });
+  });
+
   it('maps roster groups with fallback positions', () => {
     const roster = mapRosterResponse(makeRoster());
 
@@ -304,14 +346,17 @@ describe('espn mappers', () => {
   });
 
   it('maps team schedule through normalized match models', () => {
-    const matches = mapTeamScheduleResponse(makeScoreboard('post', { value: 2 }, 1, true), 'eng.1');
+    const response = makeScoreboard('post', { value: 2 }, 1, true);
+    response.events![0].competitions![0].neutralSite = true;
+    const matches = mapTeamScheduleResponse(response, 'eng.1');
 
     expect(matches[0]).toMatchObject({
       id: '401',
       leagueSlug: 'eng.1',
       homeTeam: { name: 'Arsenal' },
       homeScore: 2,
-      awayScore: 1
+      awayScore: 1,
+      neutralSite: true
     });
   });
 

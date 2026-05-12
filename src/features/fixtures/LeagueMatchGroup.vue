@@ -2,7 +2,7 @@
   <section class="space-y-3">
     <div class="flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-base font-bold">{{ league.name }}</h2>
+        <h2 class="text-base font-bold">{{ leagueLabel }}</h2>
         <p class="text-xs text-app-muted">{{ subtitle }}</p>
       </div>
     </div>
@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import { getLeagueBySlug } from '@/domain/leagues';
+import { getLeagueBySlug, getLeagueShortName } from '@/domain/leagues';
 import { dedupeMatchesById, filterMatchesForModeDate } from '@/domain/matchFilters';
 import type { LeagueSummary } from '@/domain/models';
 import type { FixtureMode } from '@/stores/fixturesStore';
@@ -60,6 +60,7 @@ const props = defineProps<{
 }>();
 
 const league = computed(() => props.leagueSummary ?? getLeagueBySlug(props.leagueSlug));
+const leagueLabel = computed(() => getLeagueShortName(league.value.slug, league.value.shortName, league.value.name));
 const subtitle = computed(() =>
   props.mode === 'results' ? 'Các trận đã kết thúc' : 'Các trận sắp diễn ra'
 );

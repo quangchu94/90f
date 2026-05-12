@@ -81,6 +81,13 @@ export function useTeamSchedule(leagueSlug: Ref<string>, teamId: Ref<string>, en
       leagueScheduleQueries.value.every((queryResult) => queryResult.isError) &&
       fixtureScheduleQuery.isError.value
   );
+  const isFetching = computed(
+    () =>
+      isEnabled.value &&
+      (catalogQuery.isFetching.value ||
+        fixtureScheduleQuery.isFetching.value ||
+        leagueScheduleQueries.value.some((queryResult) => queryResult.isFetching))
+  );
 
   function refetch(): void {
     void catalogQuery.refetch();
@@ -93,6 +100,7 @@ export function useTeamSchedule(leagueSlug: Ref<string>, teamId: Ref<string>, en
   return {
     data,
     isLoading,
+    isFetching,
     isError,
     refetch
   };

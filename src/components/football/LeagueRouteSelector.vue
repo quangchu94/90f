@@ -7,14 +7,14 @@
       @change="handleChange"
     >
       <option v-for="league in leagues" :key="league.slug" :value="league.slug">
-        {{ league.shortName ?? league.name }}
+        {{ getLeagueShortName(league.slug, league.shortName, league.name) }}
       </option>
     </select>
   </label>
 </template>
 
 <script setup lang="ts">
-import { INITIAL_LEAGUES } from '@/domain/leagues';
+import { getLeagueShortName, INITIAL_LEAGUES } from '@/domain/leagues';
 
 defineProps<{
   modelValue: string;

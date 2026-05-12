@@ -3,6 +3,7 @@ import {
   buildMatchSummaryUrl,
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
+  buildSoccerLeagueDetailUrl,
   buildSoccerLeaguesUrl,
   buildStandingsUrl,
   buildTeamDetailUrl,
@@ -34,6 +35,7 @@ import type {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const TEAM_SCHEDULE_CONCURRENCY = 6;
+const LEAGUE_DETAIL_CONCURRENCY = 6;
 
 export class EspnError extends Error {
   constructor(
@@ -142,22 +144,61 @@ export async function fetchSoccerLeagues(signal?: AbortSignal): Promise<LeagueSu
   return mergeLeagueSummaries(directLeagues);
 }
 
+export async function fetchSoccerLeagueDetail(
+  leagueSlug: string,
+  signal?: AbortSignal
+): Promise<LeagueSummary> {
+  const response = await espnHttpClient.getJson<EspnLeague>(
+    buildSoccerLeagueDetailUrl(leagueSlug),
+    signal
+  );
+  const league = mapEspnLeagueSummary({ ...response, slug: response.slug ?? leagueSlug });
+
+  if (!league) {
+    throw new EspnError('ESPN league detail response is missing a slug');
+  }
+
+  return league;
+}
+
+export async function fetchSoccerLeagueDetailsForPicker(
+  catalogLeagues: LeagueSummary[],
+  signal?: AbortSignal
+): Promise<LeagueSummary[]> {
+  const detailResults = await allSettledWithConcurrency(
+    catalogLeagues,
+    LEAGUE_DETAIL_CONCURRENCY,
+    (league) => fetchSoccerLeagueDetail(league.slug, signal)
+  );
+
+  return detailResults
+    .filter((result): result is PromiseFulfilledResult<LeagueSummary> => result.status === 'fulfilled')
+    .map((result) => result.value);
+}
+
+export async function fetchSoccerLeaguesForPicker(signal?: AbortSignal): Promise<LeagueSummary[]> {
+  const catalogLeagues = await fetchSoccerLeagues(signal);
+  const detailLeagues = await fetchSoccerLeagueDetailsForPicker(catalogLeagues, signal);
+
+  return mergeLeagueSummaries([...catalogLeagues, ...detailLeagues]);
+}
+
 export async function fetchTeamDetail(
   leagueSlug: string,
   teamId: string,
   signal?: AbortSignal
 ): Promise<EspnTeamDetailResponse> {
   try {
+    return await espnHttpClient.getJson<EspnTeamDetailResponse>(
+      buildTeamDetailUrl(leagueSlug, teamId),
+      signal
+    );
+  } catch {
     const coreTeam = await espnHttpClient.getJson<EspnTeamDetailResponse>(
       buildCoreTeamDetailUrl(leagueSlug, teamId),
       signal
     );
     return withResolvedVenue(coreTeam, signal);
-  } catch {
-    return espnHttpClient.getJson<EspnTeamDetailResponse>(
-      buildTeamDetailUrl(leagueSlug, teamId),
-      signal
-    );
   }
 }
 

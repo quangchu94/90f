@@ -142,7 +142,13 @@ export function mapTeamDetailResponse(
   leagueSlug: string,
   teamId: string
 ): TeamDetail {
-  return mapTeamDetail(response.team ?? { ...response, id: response.id ?? teamId }, leagueSlug);
+  const team = response.team ?? { ...response, id: response.id ?? teamId };
+  const mappedTeam = mapTeamDetail(team, leagueSlug);
+
+  return {
+    ...mappedTeam,
+    venue: getTeamDetailVenue(response, mappedTeam.id) ?? mappedTeam.venue
+  };
 }
 
 export function mapRosterResponse(response: EspnRosterResponse): PlayerSummary[] {
@@ -208,7 +214,8 @@ function mapEventToFootballMatch(
       ...(event.notes ?? []).flatMap((note) => [note.type, note.headline, note.text]),
       ...(competition?.notes ?? []).flatMap((note) => [note.type, note.headline, note.text])
     ]),
-    venue: competition?.venue?.fullName
+    venue: competition?.venue?.fullName ?? competition?.venue?.displayName ?? competition?.venue?.name,
+    neutralSite: competition?.neutralSite
   };
 }
 
@@ -256,6 +263,34 @@ function mapTeamDetail(team: EspnTeam, leagueSlug: string): TeamDetail {
     venue: team.venue?.fullName ?? team.venue?.displayName ?? team.venue?.name,
     color: team.color
   };
+}
+
+function getTeamDetailVenue(response: EspnTeamDetailResponse, teamId: string): string | undefined {
+  const explicitVenue = getVenueName(response.team?.venue) ?? getVenueName(response.venue);
+
+  if (explicitVenue) {
+    return explicitVenue;
+  }
+
+  return response.nextEvent
+    ?.flatMap((event) => event.competitions ?? [])
+    .find((competition) => {
+      if (competition.neutralSite) {
+        return false;
+      }
+
+      const homeCompetitor = competition.competitors?.find(
+        (competitor) => competitor.homeAway === 'home'
+      );
+      return homeCompetitor?.team?.id === teamId || homeCompetitor?.id === teamId;
+    })
+    ?.venue?.fullName;
+}
+
+function getVenueName(
+  venue: { fullName?: string; displayName?: string; name?: string } | undefined
+): string | undefined {
+  return venue?.fullName ?? venue?.displayName ?? venue?.name;
 }
 
 function mapStandingEntries(entries: EspnStandingEntry[]): StandingRow[] {

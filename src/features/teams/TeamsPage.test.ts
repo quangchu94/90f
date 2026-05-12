@@ -51,4 +51,20 @@ describe('TeamsPage', () => {
       params: { leagueSlug: 'esp.1' }
     });
   });
+
+  it('uses the league short label in the page subtitle', () => {
+    const wrapper = mount(TeamsPage, {
+      props: { leagueSlug: 'esp.1' },
+      global: {
+        stubs: {
+          LeagueRouteSelector: true,
+          StateBlock: true,
+          TeamCard: true
+        }
+      }
+    });
+
+    expect(wrapper.text()).toContain('LaLiga');
+    expect(wrapper.text()).not.toContain('La Liga');
+  });
 });

@@ -11,6 +11,74 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn()
 }));
 
+const teamDetailMock = vi.hoisted(() => ({
+  team: {
+    id: '359',
+    leagueSlug: 'eng.1',
+    name: 'Arsenal',
+    shortName: 'Arsenal',
+    abbreviation: 'ARS',
+    venue: 'Emirates Stadium' as string | undefined
+  }
+}));
+
+const teamScheduleMock = vi.hoisted(() => ({
+  matches: [
+    {
+      id: '401',
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      kickoff: '2026-05-08T14:00:00Z',
+      status: 'finished',
+      statusText: 'FT',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '2', name: 'Chelsea', shortName: 'Chelsea' },
+      homeScore: 2,
+      awayScore: 1,
+      venue: 'Emirates Stadium'
+    },
+    {
+      id: '403',
+      leagueSlug: 'uefa.champions',
+      leagueName: 'UEFA Champions League',
+      kickoff: '2026-05-09T19:00:00Z',
+      status: 'finished',
+      statusText: 'FT',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '86', name: 'Real Madrid', shortName: 'Real Madrid' },
+      homeScore: 1,
+      awayScore: 0,
+      venue: 'Emirates Stadium',
+      neutralSite: true
+    },
+    {
+      id: '402',
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      kickoff: '2026-05-10T14:00:00Z',
+      status: 'scheduled',
+      statusText: 'Scheduled',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '3', name: 'Liverpool', shortName: 'Liverpool' },
+      venue: 'Emirates Stadium'
+    },
+    {
+      id: '404',
+      leagueSlug: 'uefa.champions',
+      leagueName: 'UEFA Champions League',
+      kickoff: '2026-05-12T19:00:00Z',
+      status: 'scheduled',
+      statusText: 'Scheduled',
+      homeTeam: { id: '83', name: 'Barcelona', shortName: 'Barcelona' },
+      awayTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      venue: 'Camp Nou'
+    }
+  ] as Array<Record<string, unknown>>,
+  isLoading: false,
+  isFetching: false,
+  isError: false
+}));
+
 vi.mock('vue-router', () => ({
   useRoute: () => routerMock.route,
   useRouter: () => ({ replace: routerMock.replace })
@@ -18,14 +86,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/composables/useTeamDetail', () => ({
   useTeamDetail: () => ({
-    data: computed(() => ({
-      id: '359',
-      leagueSlug: 'eng.1',
-      name: 'Arsenal',
-      shortName: 'Arsenal',
-      abbreviation: 'ARS',
-      venue: 'Emirates Stadium'
-    })),
+    data: computed(() => teamDetailMock.team),
     isLoading: computed(() => false),
     isError: computed(() => false),
     refetch: vi.fn()
@@ -43,54 +104,10 @@ vi.mock('@/composables/useTeamRoster', () => ({
 
 vi.mock('@/composables/useTeamSchedule', () => ({
   useTeamSchedule: () => ({
-    data: computed(() => [
-      {
-        id: '401',
-        leagueSlug: 'eng.1',
-        leagueName: 'Premier League',
-        kickoff: '2026-05-08T14:00:00Z',
-        status: 'finished',
-        statusText: 'FT',
-        homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
-        awayTeam: { id: '2', name: 'Chelsea', shortName: 'Chelsea' },
-        homeScore: 2,
-        awayScore: 1
-      },
-      {
-        id: '403',
-        leagueSlug: 'uefa.champions',
-        leagueName: 'UEFA Champions League',
-        kickoff: '2026-05-09T19:00:00Z',
-        status: 'finished',
-        statusText: 'FT',
-        homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
-        awayTeam: { id: '86', name: 'Real Madrid', shortName: 'Real Madrid' },
-        homeScore: 1,
-        awayScore: 0
-      },
-      {
-        id: '402',
-        leagueSlug: 'eng.1',
-        leagueName: 'Premier League',
-        kickoff: '2026-05-10T14:00:00Z',
-        status: 'scheduled',
-        statusText: 'Scheduled',
-        homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
-        awayTeam: { id: '3', name: 'Liverpool', shortName: 'Liverpool' }
-      },
-      {
-        id: '404',
-        leagueSlug: 'uefa.champions',
-        leagueName: 'UEFA Champions League',
-        kickoff: '2026-05-12T19:00:00Z',
-        status: 'scheduled',
-        statusText: 'Scheduled',
-        homeTeam: { id: '83', name: 'Barcelona', shortName: 'Barcelona' },
-        awayTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' }
-      }
-    ]),
-    isLoading: computed(() => false),
-    isError: computed(() => false),
+    data: computed(() => teamScheduleMock.matches),
+    isLoading: computed(() => teamScheduleMock.isLoading),
+    isFetching: computed(() => teamScheduleMock.isFetching),
+    isError: computed(() => teamScheduleMock.isError),
     refetch: vi.fn()
   })
 }));
@@ -102,11 +119,77 @@ vi.mock('@/stores/preferencesStore', () => ({
   })
 }));
 
+function makeDefaultTeamScheduleMatches() {
+  return [
+    {
+      id: '401',
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      kickoff: '2026-05-08T14:00:00Z',
+      status: 'finished',
+      statusText: 'FT',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '2', name: 'Chelsea', shortName: 'Chelsea' },
+      homeScore: 2,
+      awayScore: 1,
+      venue: 'Emirates Stadium'
+    },
+    {
+      id: '403',
+      leagueSlug: 'uefa.champions',
+      leagueName: 'UEFA Champions League',
+      kickoff: '2026-05-09T19:00:00Z',
+      status: 'finished',
+      statusText: 'FT',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '86', name: 'Real Madrid', shortName: 'Real Madrid' },
+      homeScore: 1,
+      awayScore: 0,
+      venue: 'Wembley Stadium',
+      neutralSite: true
+    },
+    {
+      id: '402',
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      kickoff: '2026-05-10T14:00:00Z',
+      status: 'scheduled',
+      statusText: 'Scheduled',
+      homeTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      awayTeam: { id: '3', name: 'Liverpool', shortName: 'Liverpool' },
+      venue: 'Emirates Stadium'
+    },
+    {
+      id: '404',
+      leagueSlug: 'uefa.champions',
+      leagueName: 'UEFA Champions League',
+      kickoff: '2026-05-12T19:00:00Z',
+      status: 'scheduled',
+      statusText: 'Scheduled',
+      homeTeam: { id: '83', name: 'Barcelona', shortName: 'Barcelona' },
+      awayTeam: { id: '359', name: 'Arsenal', shortName: 'Arsenal' },
+      venue: 'Camp Nou'
+    }
+  ];
+}
+
 describe('TeamDetailPage', () => {
   beforeEach(() => {
     routerMock.route.fullPath = '/team/eng.1/359';
     routerMock.route.query = {};
     routerMock.replace.mockClear();
+    teamDetailMock.team = {
+      id: '359',
+      leagueSlug: 'eng.1',
+      name: 'Arsenal',
+      shortName: 'Arsenal',
+      abbreviation: 'ARS',
+      venue: 'Emirates Stadium'
+    };
+    teamScheduleMock.matches = makeDefaultTeamScheduleMatches();
+    teamScheduleMock.isLoading = false;
+    teamScheduleMock.isFetching = false;
+    teamScheduleMock.isError = false;
   });
 
   it('renders venue and upcoming team fixtures by default', () => {
@@ -126,6 +209,70 @@ describe('TeamDetailPage', () => {
     expect(wrapper.text()).toContain('UCL');
     expect(wrapper.text()).toContain('10/05/2026');
     expect(wrapper.text()).not.toContain('Chelsea');
+  });
+
+  it('infers venue from non-neutral home schedule matches when team venue is missing', () => {
+    teamDetailMock.team = {
+      ...teamDetailMock.team,
+      venue: undefined
+    };
+    teamScheduleMock.matches = [
+      {
+        ...makeDefaultTeamScheduleMatches()[0],
+        venue: 'Wembley Stadium',
+        neutralSite: true
+      },
+      {
+        ...makeDefaultTeamScheduleMatches()[2],
+        venue: 'Emirates Stadium'
+      }
+    ];
+
+    const wrapper = mount(TeamDetailPage, {
+      props: { leagueSlug: 'eng.1', teamId: '359' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+
+    expect(wrapper.text()).toContain('Emirates Stadium');
+    expect(wrapper.text()).not.toContain('Wembley Stadium');
+  });
+
+  it('shows loading copy while schedule is still fetching and no matches are visible', () => {
+    teamScheduleMock.matches = [];
+    teamScheduleMock.isFetching = true;
+
+    const wrapper = mount(TeamDetailPage, {
+      props: { leagueSlug: 'eng.1', teamId: '359' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+
+    expect(wrapper.text()).toContain('Đang tải dữ liệu');
+    expect(wrapper.text()).not.toContain('Chưa có lịch thi đấu cho đội này.');
+  });
+
+  it('shows empty schedule copy only after schedule fetching is done', () => {
+    teamScheduleMock.matches = [];
+    teamScheduleMock.isFetching = false;
+
+    const wrapper = mount(TeamDetailPage, {
+      props: { leagueSlug: 'eng.1', teamId: '359' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+
+    expect(wrapper.text()).toContain('Chưa có lịch thi đấu cho đội này.');
+    expect(wrapper.text()).not.toContain('Đang tải dữ liệu');
   });
 
   it('switches team schedule tabs to finished multi-league results newest first', async () => {

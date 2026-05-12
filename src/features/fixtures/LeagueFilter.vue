@@ -8,12 +8,12 @@
         :class="buttonClass(league.slug)"
         @click="$emit('select', league.slug)"
       >
-        {{ league.shortName ?? league.name }}
+        {{ leagueDisplayLabel(league) }}
       </button>
       <button
         type="button"
         class="h-9 shrink-0 rounded border border-app-border bg-app-surface px-3 text-sm font-semibold text-app-secondary transition hover:bg-app-elevated hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent"
-        @click="isPickerOpen = true"
+        @click="openPicker"
       >
         Chọn giải
       </button>
@@ -25,7 +25,7 @@
       role="dialog"
       aria-modal="true"
       aria-label="Chọn giải đấu ESPN"
-      @click.self="isPickerOpen = false"
+      @click.self="closePicker"
     >
       <div class="max-h-[82vh] w-full max-w-xl overflow-hidden rounded border border-app-border bg-app-surface shadow-xl">
         <div class="border-b border-app-border p-4">
@@ -37,7 +37,7 @@
             <button
               type="button"
               class="rounded border border-app-border px-3 py-1 text-sm font-semibold text-app-secondary transition hover:bg-app-elevated hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent"
-              @click="isPickerOpen = false"
+              @click="closePicker"
             >
               Đóng
             </button>
@@ -64,9 +64,24 @@
           </div>
 
           <div v-else class="space-y-4">
+            <div v-if="isFetching" class="px-2 text-xs font-semibold text-app-secondary">
+              Đang tải thêm giải...
+            </div>
             <div v-for="group in groupedLeagues" :key="group.label" class="space-y-1">
-              <p class="px-2 text-xs font-bold uppercase text-app-muted">{{ group.label }}</p>
+              <button
+                type="button"
+                class="flex w-full items-center justify-between rounded px-2 py-2 text-left text-xs font-bold uppercase text-app-muted transition hover:bg-app-elevated hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent"
+                :aria-expanded="isGroupExpanded(group)"
+                @click="toggleGroup(group.label)"
+              >
+                <span>{{ group.label }}</span>
+                <span class="flex items-center gap-2">
+                  <span>{{ group.leagues.length }}</span>
+                  <span class="text-sm leading-none">{{ isGroupExpanded(group) ? '−' : '+' }}</span>
+                </span>
+              </button>
               <div
+                v-if="isGroupExpanded(group)"
                 v-for="league in group.leagues"
                 :key="league.slug"
                 class="flex w-full items-center justify-between gap-3 rounded px-3 py-2 transition hover:bg-app-elevated"
@@ -76,11 +91,11 @@
                   class="min-w-0 flex-1 text-left focus:outline-none focus:ring-2 focus:ring-app-accent"
                   @click="handleLeaguePick(league)"
                 >
-                  <span class="block truncate text-sm font-semibold text-app-text">{{ league.name }}</span>
+                  <span class="block truncate text-sm font-semibold text-app-text">{{ leagueDisplayLabel(league) }}</span>
                   <span class="block truncate text-xs text-app-secondary">{{ league.slug }}</span>
                 </button>
                 <span class="flex shrink-0 items-center gap-2">
-                  <span class="text-xs font-bold text-app-amber">{{ league.shortName ?? league.slug }}</span>
+                  <span class="text-xs font-bold text-app-amber">{{ leagueDisplayLabel(league) }}</span>
                   <button
                     v-if="isFavorite(league.slug)"
                     type="button"
@@ -103,7 +118,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { LeagueSummary } from '@/domain/models';
-import { mergeLeagueSummaries, sortLeagueGroups } from '@/domain/leagues';
+import {
+  getLeagueShortName,
+  mergeLeagueSummaries,
+  sortLeagueGroups,
+  sortLeaguesWithinGroup
+} from '@/domain/leagues';
 import { useSoccerLeagues } from '@/composables/useSoccerLeagues';
 
 const props = defineProps<{
@@ -119,7 +139,8 @@ const emit = defineEmits<{
 
 const isPickerOpen = ref(false);
 const searchTerm = ref('');
-const { data: catalogLeagues, isLoading, isError } = useSoccerLeagues();
+const expandedGroupLabels = ref<Set<string>>(new Set());
+const { data: catalogLeagues, isLoading, isFetching, isError } = useSoccerLeagues();
 
 const allLeagues = computed(() =>
   mergeLeagueSummaries([...(catalogLeagues.value ?? []), ...props.favoriteLeagues])
@@ -146,7 +167,7 @@ const groupedLeagues = computed(() => {
   return sortLeagueGroups([...groups.entries()]
     .map(([label, leagues]) => ({
       label,
-      leagues: leagues.sort((left, right) => left.name.localeCompare(right.name))
+      leagues: sortLeaguesWithinGroup(leagues)
     })));
 });
 
@@ -159,10 +180,19 @@ function buttonClass(leagueSlug: string): string {
     : `${base} border-app-border bg-app-surface text-app-secondary hover:bg-app-elevated hover:text-app-text`;
 }
 
-function handleLeaguePick(league: LeagueSummary): void {
-  emit('addFavorite', league);
+function openPicker(): void {
+  expandedGroupLabels.value = getDefaultExpandedGroupLabels();
+  isPickerOpen.value = true;
+}
+
+function closePicker(): void {
   isPickerOpen.value = false;
   searchTerm.value = '';
+}
+
+function handleLeaguePick(league: LeagueSummary): void {
+  emit('addFavorite', league);
+  closePicker();
 }
 
 function isFavorite(leagueSlug: string): boolean {
@@ -179,5 +209,42 @@ function handleFavoriteRemove(leagueSlug: string): void {
   }
 
   emit('removeFavorite', leagueSlug);
+}
+
+function leagueDisplayLabel(league: LeagueSummary): string {
+  return getLeagueShortName(league.slug, league.shortName, league.name);
+}
+
+function getDefaultExpandedGroupLabels(): Set<string> {
+  const favoriteSlugs = new Set(props.favoriteLeagues.map((league) => league.slug));
+  const labels = new Set<string>();
+
+  for (const league of allLeagues.value) {
+    if (favoriteSlugs.has(league.slug) || league.slug === props.selectedLeagueSlug) {
+      labels.add(league.groupLabel ?? 'Other');
+    }
+  }
+
+  return labels;
+}
+
+function isGroupExpanded(group: { label: string; leagues: LeagueSummary[] }): boolean {
+  if (searchTerm.value.trim()) {
+    return true;
+  }
+
+  return expandedGroupLabels.value.has(group.label);
+}
+
+function toggleGroup(groupLabel: string): void {
+  const nextExpandedGroupLabels = new Set(expandedGroupLabels.value);
+
+  if (nextExpandedGroupLabels.has(groupLabel)) {
+    nextExpandedGroupLabels.delete(groupLabel);
+  } else {
+    nextExpandedGroupLabels.add(groupLabel);
+  }
+
+  expandedGroupLabels.value = nextExpandedGroupLabels;
 }
 </script>

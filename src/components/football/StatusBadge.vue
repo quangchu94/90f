@@ -17,7 +17,7 @@ const props = defineProps<{
 const label = computed(() => props.label ?? STATUS_LABELS[props.status]);
 
 const badgeClass = computed(() => {
-  const base = 'inline-flex h-6 min-w-20 items-center justify-center rounded border px-2 text-xs font-semibold';
+  const base = 'inline-flex h-6 items-center justify-center rounded border px-2 text-[0.7rem] font-semibold sm:min-w-20 sm:text-xs';
 
   if (props.status === 'in_progress' || props.status === 'halftime') {
     return `${base} border-app-live/50 bg-app-live/15 text-app-live`;

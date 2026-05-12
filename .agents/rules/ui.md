@@ -35,11 +35,14 @@ Suggested palette:
 - Keep page sections full-width or naturally constrained.
 - Do not place cards inside cards.
 - Use compact match rows/cards with stable heights, crests, kickoff/status, names, scores, and clear tap targets.
+- Match rows must be responsive on narrow viewports; meta/status/score must not overlap or squeeze team names beyond truncation.
 - Standings with multiple groups use a shared fixed column layout so columns align.
+- Standings on mobile must show rank, team, played, wins, draws, losses, goal difference, and points in one viewport without relying on horizontal scrolling.
 - Buttons and filters must have visible active, hover, focus, loading, and disabled states.
 - Text must not overflow buttons, cards, tabs, or match rows.
 - Use icons where helpful for calendar, trophy, search, chevron, star/favorite, refresh, and status.
 - Match detail timeline appears directly below the score header.
+- Team schedule empty states must not appear while schedule requests are still fetching; show a loading/updating message until requests settle.
 
 ## Routes
 
@@ -52,6 +55,13 @@ Suggested palette:
 - `/team/:leagueSlug/:teamId` team detail.
 - Team and standings routes must not show raw unsupported slugs as league names; unsupported route leagues should replace to a supported fallback in the same country/confederation when possible.
 - League display labels should use curated or humanized names when ESPN catalog only provides a slug.
+- League labels must not show rough slug-derived names like `German 1` when a curated or common name is known; use labels such as `Bundesliga`.
+- League labels must keep meaningful suffixes after a country prefix, for example `German 2. Bundesliga` should display as `2. Bundesliga`, not `2.`.
+- User-visible league labels should use the normalized `shortName` first, with normalized full `name` only as a fallback when `shortName` is missing.
+- League picker groups should be collapsible by country/continent/world; search results should auto-expand matching groups.
+- League picker should prefer enriched ESPN detail `shortName` labels such as `EFL Championship` and `Italian Serie B` over slug-derived fallbacks like `English 2` or `Italian 2`.
+- League picker chips and badges must not render weak ESPN abbreviations such as `2.` when a clearer normalized label like `2. Bundesliga` is available.
+- League picker groups should sort competitions by natural league order, such as `eng.1`, then `eng.2`, then domestic cups, instead of pure alphabetic order.
 
 Navigation should remain minimal: Fixtures, Results, Standings, Leagues.
 

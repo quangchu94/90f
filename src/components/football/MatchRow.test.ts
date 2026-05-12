@@ -1,6 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import MatchRow from './MatchRow.vue';
+import StatusBadge from './StatusBadge.vue';
 import type { FootballMatch } from '@/domain/models';
 
 vi.mock('vue-router', () => ({
@@ -71,6 +72,28 @@ describe('MatchRow', () => {
       name: 'match-detail',
       query: { returnTo: '/team/eng.1/359?tab=results&league=uefa.champions' }
     });
+  });
+
+  it('uses a compact mobile-first layout that does not force three fixed columns', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: makeMatch('scheduled') },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+    const linkClasses = wrapper.findComponent(RouterLinkStub).classes().join(' ');
+
+    expect(linkClasses).toContain('grid-cols-[minmax(0,1fr)_2.25rem]');
+    expect(linkClasses).toContain('sm:grid-cols-[5rem_minmax(0,1fr)_3rem]');
+    expect(linkClasses).not.toContain('grid-cols-[3.75rem_1fr_auto]');
+  });
+
+  it('keeps status badges compact on narrow screens', () => {
+    const wrapper = mount(StatusBadge, {
+      props: { status: 'scheduled' }
+    });
+    const classes = wrapper.find('span').classes();
+
+    expect(classes).not.toContain('min-w-20');
+    expect(classes).toContain('sm:min-w-20');
   });
 });
 

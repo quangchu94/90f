@@ -51,6 +51,11 @@ export function buildSoccerLeaguesUrl(): string {
   return `${coreApiBaseUrl}/sports/soccer/leagues?${params.toString()}`;
 }
 
+export function buildSoccerLeagueDetailUrl(leagueSlug: string): string {
+  const params = new URLSearchParams({ lang: 'en', region: 'us' });
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}?${params.toString()}`;
+}
+
 export function buildProxiedEspnRefUrl(refUrl: string): string {
   if (refUrl.startsWith('http://sports.core.api.espn.com/v2')) {
     return refUrl.replace('http://sports.core.api.espn.com/v2', coreApiBaseUrl);

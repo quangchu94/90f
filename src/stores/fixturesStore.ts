@@ -7,9 +7,11 @@ export type FixtureMode = 'results' | 'fixtures';
 export const SELECTED_LEAGUES_STORAGE_KEY = '90f:selected-leagues';
 export const SELECTED_LEAGUE_STORAGE_KEY = '90f:selected-league';
 export const FAVORITE_LEAGUES_STORAGE_KEY = '90f:favorite-leagues';
+export const FAVORITE_LEAGUES_VERSION_STORAGE_KEY = '90f:favorite-leagues-version';
 
 const defaultFavoriteLeagues = INITIAL_LEAGUES;
 const defaultLeagueSlugs = new Set(defaultFavoriteLeagues.map((league) => league.slug));
+const FAVORITE_LEAGUES_STORAGE_VERSION = 2;
 
 function isLeagueSummary(value: unknown): value is LeagueSummary {
   if (!value || typeof value !== 'object') {
@@ -51,11 +53,15 @@ function writeJsonStorage(key: string, value: unknown): void {
 
 function readFavoriteLeagues(): LeagueSummary[] {
   const storedFavorites = readJsonStorage<unknown>(FAVORITE_LEAGUES_STORAGE_KEY);
+  const storedVersion = readJsonStorage<unknown>(FAVORITE_LEAGUES_VERSION_STORAGE_KEY);
+  const hasCurrentStorageVersion = storedVersion === FAVORITE_LEAGUES_STORAGE_VERSION;
 
   if (Array.isArray(storedFavorites)) {
     const validFavorites = storedFavorites.filter(isLeagueSummary);
     if (validFavorites.length) {
-      return mergeLeagueSummaries(validFavorites);
+      return hasCurrentStorageVersion
+        ? mergeLeagueSummaries(validFavorites)
+        : mergeLeagueSummaries([...defaultFavoriteLeagues, ...validFavorites]);
     }
   }
 
@@ -66,7 +72,7 @@ function readFavoriteLeagues(): LeagueSummary[] {
       .map((slug) => INITIAL_LEAGUES.find((league) => league.slug === slug) ?? { slug, name: slug });
 
     if (legacyFavorites.length) {
-      return mergeLeagueSummaries(legacyFavorites);
+      return mergeLeagueSummaries([...defaultFavoriteLeagues, ...legacyFavorites]);
     }
   }
 
@@ -100,6 +106,7 @@ function readSelectedLeagueSlug(favoriteLeagues: LeagueSummary[]): string {
 
 function persistFavoriteLeagues(favoriteLeagues: LeagueSummary[]): void {
   writeJsonStorage(FAVORITE_LEAGUES_STORAGE_KEY, favoriteLeagues);
+  writeJsonStorage(FAVORITE_LEAGUES_VERSION_STORAGE_KEY, FAVORITE_LEAGUES_STORAGE_VERSION);
 }
 
 function persistSelectedLeagueSlug(leagueSlug: string): void {

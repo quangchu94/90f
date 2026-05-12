@@ -56,6 +56,25 @@ describe('LeagueMatchGroup', () => {
     expect(wrapper.text()).toContain('Hãy thử tải thêm lịch đấu hoặc chọn thêm giải đấu.');
     expect(wrapper.text()).not.toContain('Chưa có trận sắp diễn ra trong ngày này.');
   });
+  it('uses the league short label in the group header', () => {
+    const wrapper = mount(LeagueMatchGroup, {
+      props: {
+        leagueSlug: 'eng.1',
+        leagueSummary: { slug: 'eng.1', name: 'Premier League', shortName: 'EPL' },
+        dates: ['2026-05-08'],
+        mode: 'fixtures'
+      },
+      global: {
+        stubs: {
+          RouterLink: {
+            template: '<a><slot /></a>'
+          }
+        }
+      }
+    });
+
+    expect(wrapper.find('h2').text()).toBe('EPL');
+  });
 });
 
 function mountGroup(dates: string[], mode: 'results' | 'fixtures') {

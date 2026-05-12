@@ -49,8 +49,11 @@ export interface EspnCompetition {
   date?: string;
   competitors?: EspnCompetitor[];
   status?: EspnEventStatus;
+  neutralSite?: boolean;
   venue?: {
     fullName?: string;
+    displayName?: string;
+    name?: string;
   };
   broadcasts?: Array<{
     names?: string[];
@@ -251,6 +254,7 @@ export interface EspnTeamDetailResponse {
     displayName?: string;
     name?: string;
   };
+  nextEvent?: EspnEvent[];
 }
 
 export interface EspnAthlete {

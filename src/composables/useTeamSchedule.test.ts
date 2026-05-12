@@ -62,6 +62,28 @@ describe('useTeamSchedule', () => {
 
     expect(wrapper.text()).toContain('laliga-result,ucl-result');
   });
+
+  it('exposes fetching state while schedule requests are pending', async () => {
+    const spainSchedule = deferred<EspnTeamScheduleResponse>();
+    const fixtureSchedule = deferred<EspnTeamScheduleResponse>();
+
+    vi.mocked(fetchSoccerLeagues).mockResolvedValue([
+      { slug: 'esp.1', name: 'Spanish LALIGA', shortName: 'LaLiga' }
+    ]);
+    vi.mocked(fetchTeamScheduleLeague).mockReturnValue(spainSchedule.promise);
+    vi.mocked(fetchTeamFixtureSchedule).mockReturnValue(fixtureSchedule.promise);
+
+    const wrapper = mountFetchingTestComponent();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('fetching');
+
+    spainSchedule.resolve({ events: [] });
+    fixtureSchedule.resolve({ events: [] });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('idle');
+  });
 });
 
 function mountTestComponent() {
@@ -76,6 +98,28 @@ function mountTestComponent() {
       setup() {
         const { data } = useTeamSchedule(ref('esp.1'), ref('83'), ref(true));
         return () => h('div', data.value?.map((match) => match.id).join(',') ?? 'empty');
+      }
+    }),
+    {
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient }]]
+      }
+    }
+  );
+}
+
+function mountFetchingTestComponent() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  });
+
+  return mount(
+    defineComponent({
+      setup() {
+        const { isFetching } = useTeamSchedule(ref('esp.1'), ref('83'), ref(true));
+        return () => h('div', isFetching.value ? 'fetching' : 'idle');
       }
     }),
     {

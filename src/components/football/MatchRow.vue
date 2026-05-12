@@ -1,19 +1,19 @@
 <template>
   <RouterLink
     :to="matchDetailRoute"
-    class="grid min-h-24 grid-cols-[3.75rem_1fr_auto] items-center gap-3 rounded border border-app-border bg-app-surface px-3 py-3 transition hover:border-app-accent/60 hover:bg-app-elevated focus:outline-none focus:ring-2 focus:ring-app-accent sm:grid-cols-[5rem_1fr_auto]"
+    class="grid min-h-24 grid-cols-[minmax(0,1fr)_2.25rem] gap-2 rounded border border-app-border bg-app-surface px-3 py-3 transition hover:border-app-accent/60 hover:bg-app-elevated focus:outline-none focus:ring-2 focus:ring-app-accent sm:grid-cols-[5rem_minmax(0,1fr)_3rem] sm:items-center sm:gap-3"
   >
-    <div class="text-center">
+    <div class="col-span-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-left sm:col-span-1 sm:block sm:text-center">
       <p v-if="showLeague" class="line-clamp-2 text-[0.65rem] font-semibold leading-tight text-app-secondary">{{ leagueLabel }}</p>
-      <p v-if="match.importanceLabel" class="mt-1 inline-flex rounded border border-app-amber/50 px-1.5 py-0.5 text-[0.65rem] font-bold text-app-amber">
+      <p v-if="match.importanceLabel" class="inline-flex rounded border border-app-amber/50 px-1.5 py-0.5 text-[0.65rem] font-bold text-app-amber sm:mt-1">
         {{ match.importanceLabel }}
       </p>
       <p v-if="showDate" class="text-xs font-semibold text-app-secondary">{{ dateLabel }}</p>
       <p class="text-sm font-bold text-app-amber">{{ timeLabel }}</p>
-      <StatusBadge class="mt-2" :status="match.status" :label="compactStatusLabel" />
+      <StatusBadge class="sm:mt-2" :status="match.status" :label="compactStatusLabel" />
     </div>
 
-    <div class="min-w-0 space-y-3">
+    <div class="min-w-0 space-y-2 sm:space-y-3">
       <div class="flex min-w-0 items-center gap-2">
         <TeamLogo :src="match.homeTeam.logoUrl" :alt="match.homeTeam.name" :fallback-name="match.homeTeam.shortName" />
         <span class="truncate text-sm font-semibold sm:text-base">{{ match.homeTeam.name }}</span>
@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <div class="grid w-12 gap-3 text-center text-xl font-black text-app-text">
+    <div class="grid w-9 gap-2 text-center text-lg font-black text-app-text sm:w-12 sm:gap-3 sm:text-xl">
       <span>{{ scoreLabel(match.homeScore) }}</span>
       <span>{{ scoreLabel(match.awayScore) }}</span>
     </div>

@@ -48,7 +48,7 @@
           </div>
           <div class="flex justify-between gap-3 rounded border border-app-border bg-app-elevated px-3 py-3">
             <dt class="text-app-secondary">Sân vận động</dt>
-            <dd class="text-right font-semibold">{{ team.venue ?? 'Chưa có dữ liệu' }}</dd>
+            <dd class="text-right font-semibold">{{ teamVenue }}</dd>
           </div>
         </dl>
       </section>
@@ -91,6 +91,11 @@
           v-else-if="scheduleIsError"
           title="Không thể tải lịch thi đấu"
           message="Vui lòng thử lại sau."
+        />
+        <StateBlock
+          v-else-if="!visibleSchedule.length && scheduleIsFetching"
+          title="Đang tải dữ liệu"
+          message="Lịch thi đấu của đội đang được cập nhật."
         />
         <StateBlock
           v-else-if="!visibleSchedule.length"
@@ -213,11 +218,31 @@ const {
 const {
   data: schedule,
   isLoading: scheduleIsLoading,
+  isFetching: scheduleIsFetching,
   isError: scheduleIsError,
   refetch: refetchSchedule
 } = useTeamSchedule(effectiveLeagueSlug, teamId, isSupportedLeague);
-const leagueName = computed(() => getLeagueBySlug(effectiveLeagueSlug.value).name);
+const leagueName = computed(() => {
+  const league = getLeagueBySlug(effectiveLeagueSlug.value);
+  return getLeagueShortName(league.slug, league.shortName, league.name);
+});
+const teamVenue = computed(() => team.value?.venue ?? inferredHomeVenue.value ?? 'Chưa có dữ liệu');
 const rosterGroups = computed(() => groupRoster(roster.value ?? []));
+const inferredHomeVenue = computed(() => {
+  if (!team.value) {
+    return undefined;
+  }
+
+  return (schedule.value ?? [])
+    .filter(
+      (match) =>
+        match.homeTeam.id === team.value?.id &&
+        match.neutralSite !== true &&
+        Boolean(match.venue)
+    )
+    .sort((left, right) => getKickoffDistance(left.kickoff) - getKickoffDistance(right.kickoff))[0]
+    ?.venue;
+});
 const scheduleLeagueOptions = computed(() => {
   const leagues = new Map<string, string>();
 
@@ -313,6 +338,11 @@ function playerInitials(name: string): string {
     .map((part) => part[0])
     .join('')
     .toUpperCase();
+}
+
+function getKickoffDistance(kickoff: string): number {
+  const timestamp = new Date(kickoff).getTime();
+  return Number.isFinite(timestamp) ? Math.abs(timestamp - Date.now()) : Number.MAX_SAFE_INTEGER;
 }
 
 function handleTeamRefetch(): void {
