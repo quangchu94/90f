@@ -18,6 +18,11 @@ export const router = createRouter({
       redirect: '/fixtures'
     },
     {
+      path: '/live',
+      name: 'live',
+      component: () => import('@/features/live/LivePage.vue')
+    },
+    {
       path: '/match/:leagueSlug/:eventId',
       name: 'match-detail',
       component: () => import('@/features/match-detail/MatchDetailPage.vue'),

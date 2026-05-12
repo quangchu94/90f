@@ -9,6 +9,7 @@ const CURATED_LEAGUE_NAMES: Record<string, { name: string; shortName?: string }>
   'ita.1': { name: 'Serie A', shortName: 'Serie A' },
   'ita.2': { name: 'Italian Serie B', shortName: 'Italian Serie B' },
   'fra.1': { name: 'Ligue 1', shortName: 'Ligue 1' },
+  'usa.1': { name: 'MLS', shortName: 'MLS' },
   'ger.dfb_pokal': { name: 'German Cup', shortName: 'DFB Pokal' },
   'esp.copa_del_rey': { name: 'Spanish Copa del Rey', shortName: 'Copa del Rey' }
 };
@@ -18,10 +19,11 @@ const COUNTRY_NAME_PREFIXES: Record<string, string> = {
   esp: 'Spanish',
   ger: 'German',
   ita: 'Italian',
-  fra: 'French'
+  fra: 'French',
+  usa: 'American'
 };
 
-const PRIORITY_LEAGUE_PREFIXES = new Set(['fifa', 'uefa', 'eng', 'ger', 'esp', 'ita', 'fra']);
+const PRIORITY_LEAGUE_PREFIXES = new Set(['fifa', 'uefa', 'concacaf', 'eng', 'ger', 'esp', 'ita', 'fra', 'usa']);
 
 export const INITIAL_LEAGUES: LeagueSummary[] = [
   enrichLeagueMetadata({ slug: 'fifa.world', name: 'FIFA World Cup', shortName: 'World Cup' }),
@@ -148,6 +150,16 @@ export function enrichLeagueMetadata(league: LeagueSummary): LeagueSummary {
       groupLabel: 'Europe / UEFA',
       groupType: 'continental',
       confederation: 'UEFA',
+      isExcludedFromTeamSchedule: false
+    };
+  }
+
+  if (league.slug.startsWith('concacaf.')) {
+    return {
+      ...normalizedLeague,
+      groupLabel: 'North America / CONCACAF',
+      groupType: 'continental',
+      confederation: 'CONCACAF',
       isExcludedFromTeamSchedule: false
     };
   }
@@ -358,6 +370,8 @@ function getCountryMetadata(slug: string): { label: string; code: string; confed
       return { label: 'Italy', code: 'ITA', confederation: 'UEFA' };
     case 'fra':
       return { label: 'France', code: 'FRA', confederation: 'UEFA' };
+    case 'usa':
+      return { label: 'United States', code: 'USA', confederation: 'CONCACAF' };
     default:
       return undefined;
   }

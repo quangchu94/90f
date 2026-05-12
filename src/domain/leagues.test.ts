@@ -82,8 +82,12 @@ describe('league metadata', () => {
       name: 'Spanish Super Cup'
     });
     expect(enrichLeagueMetadata({ slug: 'usa.1', name: 'usa.1' })).toMatchObject({
-      name: 'USA 1',
-      shortName: 'USA 1'
+      name: 'MLS',
+      shortName: 'MLS',
+      groupLabel: 'United States',
+      groupType: 'country',
+      countryCode: 'USA',
+      confederation: 'CONCACAF'
     });
     expect(enrichLeagueMetadata({ slug: 'eng.2', name: 'English Championship' })).toMatchObject({
       name: 'English League Championship',
@@ -115,6 +119,25 @@ describe('league metadata', () => {
       'fifa.world'
     ]);
   });
+
+  it('scopes MLS team schedules to United States, matching continental, and world leagues', () => {
+    const candidates = getTeamScheduleCandidateLeagues('usa.1', [
+      { slug: 'usa.1', name: 'Major League Soccer' },
+      { slug: 'usa.open_cup', name: 'U.S. Open Cup' },
+      { slug: 'eng.1', name: 'Premier League' },
+      { slug: 'concacaf.champions', name: 'CONCACAF Champions Cup', groupType: 'continental', confederation: 'CONCACAF' },
+      { slug: 'fifa.world', name: 'FIFA World Cup' },
+      { slug: 'club.friendly', name: 'Club Friendly' }
+    ]);
+
+    expect(candidates.map((league) => league.slug)).toEqual([
+      'usa.1',
+      'usa.open_cup',
+      'concacaf.champions',
+      'fifa.world'
+    ]);
+  });
+
 
   it('sorts leagues inside a country group by natural competition order', () => {
     expect(

@@ -45,11 +45,20 @@
 - Do not insert blank rows for missing ranks.
 - Rows without rank stay after ranked rows in ESPN response order.
 
+## Livescore
+
+- Livescore uses one current-date all-soccer scoreboard query by default: `['live-scoreboard', YYYYMMDD]`.
+- Livescore filters normalized matches to `in_progress` and `halftime` statuses before rendering.
+- Livescore groups visible matches by normalized league and supports `all`, `favorites`, and single favorite-league filters.
+- Livescore should keep previously fetched matches visible when refetch fails.
+- Livescore polling must stop when the page is not visible or when there are no live matches.
+
 ## Cache And Error Handling
 
 Suggested stale times:
 
-- Live scoreboard: 15-30 seconds.
+- Live scoreboard with live matches: 15-30 seconds.
+- Live scoreboard without live matches: 60 seconds.
 - Today's scheduled matches: 60 seconds.
 - Finished past matches: 10-30 minutes.
 - Teams and league metadata: 24 hours.

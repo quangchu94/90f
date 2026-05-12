@@ -22,7 +22,7 @@ describe('MatchRow', () => {
 
   it('renders live and finished states', () => {
     const live = mount(MatchRow, {
-      props: { match: makeMatch('in_progress', 1, 2) },
+      props: { match: { ...makeMatch('in_progress', 1, 2), statusText: "67'" } },
       global: { stubs: { RouterLink: RouterLinkStub } }
     });
     const finished = mount(MatchRow, {
@@ -31,6 +31,7 @@ describe('MatchRow', () => {
     });
 
     expect(live.text()).toContain('Live');
+    expect(live.text()).toContain("67'");
     expect(finished.text()).toContain('FT');
   });
 

@@ -8,6 +8,7 @@ Use these endpoint families:
 
 - Scoreboard: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard`
 - Scoreboard by date: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard?dates={YYYYMMDD}`
+- All-soccer live scoreboard: `https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?dates={YYYYMMDD}&limit=200`
 - Teams: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams`
 - Match summary: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/summary?event={eventId}`
 - Standings: `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings`
@@ -20,6 +21,8 @@ Use these endpoint families:
 - Centralize URL building, query params, fetch, timeout, error handling, and response validation in the ESPN service layer.
 - Treat ESPN fields as optional unless proven stable.
 - Use `YYYYMMDD` for date query params.
+- Livescore should prefer `/sports/soccer/all/scoreboard` for the current local date to avoid fan-out across leagues.
+- Livescore must map per-event `event.leagues[0]` when available and fall back safely when ESPN omits league metadata.
 - Standings for soccer should use `/apis/v2/`, not `/apis/site/v2/`.
 - Team detail should prefer Site API `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams/{teamId}`.
 - Core team venue data can be wrong for soccer clubs; use Core team detail only as a fallback and do not let it override Site API venue or a home `nextEvent` venue.
@@ -60,4 +63,4 @@ Use these endpoint families:
 - Add conservative retries with backoff only for transient network/server errors.
 - Do not retry 4xx errors repeatedly.
 - Poll live matches only while live matches are visible or the related tab/page is active.
-- Avoid fetching all leagues by default on mobile. Start with selected or popular leagues.
+- Avoid fetching every league-specific scoreboard by default on mobile. Use the all-soccer live scoreboard or start with selected/favorite leagues.

@@ -79,9 +79,35 @@ const teamScheduleMock = vi.hoisted(() => ({
   isError: false
 }));
 
+const routeLeagueMock = vi.hoisted(() => ({
+  redirectSlugs: new Set<string>(),
+  fallbackBySlug: new Map<string, string>([['esp.copa_del_rey', 'esp.1']]),
+  leagueBySlug: new Map<string, { slug: string; name: string; shortName?: string }>([
+    ['eng.1', { slug: 'eng.1', name: 'Premier League', shortName: 'EPL' }],
+    ['usa.1', { slug: 'usa.1', name: 'MLS', shortName: 'MLS' }]
+  ])
+}));
+
 vi.mock('vue-router', () => ({
   useRoute: () => routerMock.route,
   useRouter: () => ({ replace: routerMock.replace })
+}));
+
+vi.mock('@/composables/useTeamRouteLeague', () => ({
+  useTeamRouteLeague: (leagueSlug: { value: string }) => {
+    const effectiveLeague = computed(() =>
+      routeLeagueMock.leagueBySlug.get(leagueSlug.value) ??
+      routeLeagueMock.leagueBySlug.get(routeLeagueMock.fallbackBySlug.get(leagueSlug.value) ?? 'eng.1')
+    );
+
+    return {
+      effectiveLeague,
+      effectiveLeagueSlug: computed(() => effectiveLeague.value?.slug ?? 'eng.1'),
+      canUseLeague: computed(() => !routeLeagueMock.redirectSlugs.has(leagueSlug.value)),
+      shouldRedirect: computed(() => routeLeagueMock.redirectSlugs.has(leagueSlug.value)),
+      fallbackLeagueSlug: computed(() => routeLeagueMock.fallbackBySlug.get(leagueSlug.value) ?? 'eng.1')
+    };
+  }
 }));
 
 vi.mock('@/composables/useTeamDetail', () => ({
@@ -190,6 +216,7 @@ describe('TeamDetailPage', () => {
     teamScheduleMock.isLoading = false;
     teamScheduleMock.isFetching = false;
     teamScheduleMock.isError = false;
+    routeLeagueMock.redirectSlugs.clear();
   });
 
   it('renders venue and upcoming team fixtures by default', () => {
@@ -349,7 +376,46 @@ describe('TeamDetailPage', () => {
     expect(wrapper.text()).not.toContain('Barcelona');
   });
 
+  it('keeps catalog-backed team route leagues such as MLS without redirecting', () => {
+    teamDetailMock.team = {
+      id: '20232',
+      leagueSlug: 'usa.1',
+      name: 'San Diego FC',
+      shortName: 'San Diego',
+      abbreviation: 'SD',
+      venue: 'Snapdragon Stadium'
+    };
+    teamScheduleMock.matches = [
+      {
+        id: '761611',
+        leagueSlug: 'usa.1',
+        leagueName: 'MLS',
+        kickoff: '2026-05-10T02:30:00Z',
+        status: 'scheduled',
+        statusText: 'Scheduled',
+        homeTeam: { id: '20232', name: 'San Diego FC', shortName: 'San Diego' },
+        awayTeam: { id: '184', name: 'LA Galaxy', shortName: 'LA Galaxy' },
+        venue: 'Snapdragon Stadium'
+      }
+    ];
+
+    const wrapper = mount(TeamDetailPage, {
+      props: { leagueSlug: 'usa.1', teamId: '20232' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+
+    expect(routerMock.replace).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('MLS');
+    expect(wrapper.text()).toContain('LA Galaxy');
+  });
+
   it('replaces unsupported route league with a supported country fallback', () => {
+    routeLeagueMock.redirectSlugs.add('esp.copa_del_rey');
+
     mount(TeamDetailPage, {
       props: { leagueSlug: 'esp.copa_del_rey', teamId: '83' },
       global: {

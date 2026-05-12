@@ -63,6 +63,10 @@ const leagueLabel = computed(() =>
 );
 
 const timeLabel = computed(() => {
+  if (props.match.status === 'in_progress' || props.match.status === 'halftime') {
+    return props.match.statusText;
+  }
+
   if (props.match.status === 'finished') {
     return 'FT';
   }

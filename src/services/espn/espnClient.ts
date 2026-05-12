@@ -1,5 +1,6 @@
 import {
   buildCoreTeamDetailUrl,
+  buildLiveScoreboardUrl,
   buildMatchSummaryUrl,
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
@@ -106,6 +107,13 @@ export async function fetchScoreboard(
     buildScoreboardUrl(leagueSlug, dateParam),
     signal
   );
+}
+
+export async function fetchLiveScoreboard(
+  dateParam: string,
+  signal?: AbortSignal
+): Promise<EspnScoreboardResponse> {
+  return espnHttpClient.getJson<EspnScoreboardResponse>(buildLiveScoreboardUrl(dateParam), signal);
 }
 
 export async function fetchMatchSummary(

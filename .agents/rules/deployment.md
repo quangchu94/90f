@@ -22,6 +22,8 @@ docker build -t 90f-web .
 docker run --rm -p 8080:80 90f-web
 ```
 
+After feature work, use `.agents/skills/compile.md` as the build workflow: run tests, run the Vite build, build `90f-web:latest`, restart `docker compose up -d web`, and verify the app at `http://localhost:8080`.
+
 ## Environment
 
 - Vite environment variables are build-time values, not runtime browser values.

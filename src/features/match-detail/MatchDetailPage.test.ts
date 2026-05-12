@@ -98,6 +98,23 @@ describe('MatchDetailPage', () => {
     expect(wrapper.text()).not.toContain('Spanish LALIGA');
   });
 
+  it('links team logos to team schedule and results pages', () => {
+    const wrapper = mountPage();
+    const homeTeamLink = wrapper.find('[data-testid="home-team-link"]');
+    const awayTeamLink = wrapper.find('[data-testid="away-team-link"]');
+
+    expect(homeTeamLink.attributes('aria-label')).toBe('Xem lịch đấu và kết quả của Osasuna');
+    expect(awayTeamLink.attributes('aria-label')).toBe('Xem lịch đấu và kết quả của Barcelona');
+    expect(homeTeamLink.findComponent(RouterLinkStub).props('to')).toMatchObject({
+      name: 'team-detail',
+      params: { leagueSlug: 'esp.1', teamId: '97' }
+    });
+    expect(awayTeamLink.findComponent(RouterLinkStub).props('to')).toMatchObject({
+      name: 'team-detail',
+      params: { leagueSlug: 'esp.1', teamId: '83' }
+    });
+  });
+
   it('uses returnTo query for the back link', () => {
     routerMock.route.query = { returnTo: '/team/esp.1/83?tab=results&league=esp.1' };
 

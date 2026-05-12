@@ -48,7 +48,9 @@ describe('espn client', () => {
 
     const leagues = await fetchSoccerLeagues();
 
-    expect(leagues).toContainEqual(expect.objectContaining({ slug: 'usa.1', name: 'USA 1' }));
+    expect(leagues).toContainEqual(
+      expect.objectContaining({ slug: 'usa.1', name: 'MLS', shortName: 'MLS' })
+    );
     expect(leagues).toContainEqual(
       expect.objectContaining({ slug: 'esp.1', name: 'La Liga', shortName: 'LaLiga' })
     );
@@ -129,7 +131,7 @@ describe('espn client', () => {
       expect.objectContaining({ slug: 'ita.2', shortName: 'Italian Serie B' })
     );
     expect(leagues).toContainEqual(
-      expect.objectContaining({ slug: 'usa.1', name: 'USA 1' })
+      expect.objectContaining({ slug: 'usa.1', name: 'MLS', shortName: 'MLS' })
     );
   });
 

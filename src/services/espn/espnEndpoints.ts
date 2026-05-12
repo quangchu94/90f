@@ -12,6 +12,11 @@ export function buildScoreboardUrl(leagueSlug: string, dateParam: string): strin
   return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/scoreboard?${params.toString()}`;
 }
 
+export function buildLiveScoreboardUrl(dateParam: string): string {
+  const params = new URLSearchParams({ dates: dateParam, limit: '200' });
+  return `${siteApiBaseUrl}/sports/soccer/all/scoreboard?${params.toString()}`;
+}
+
 export function buildMatchSummaryUrl(leagueSlug: string, eventId: string): string {
   const params = new URLSearchParams({ event: eventId });
   return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/summary?${params.toString()}`;

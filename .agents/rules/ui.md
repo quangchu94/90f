@@ -49,6 +49,7 @@ Suggested palette:
 - `/` redirects to `/fixtures`.
 - `/fixtures` combined match schedule and results page.
 - `/fixtures/:date` legacy route redirects to `/fixtures`.
+- `/live` current live scores page.
 - `/match/:leagueSlug/:eventId` match detail.
 - `/standings/:leagueSlug` league standings.
 - `/teams/:leagueSlug` team list.
@@ -62,8 +63,10 @@ Suggested palette:
 - League picker should prefer enriched ESPN detail `shortName` labels such as `EFL Championship` and `Italian Serie B` over slug-derived fallbacks like `English 2` or `Italian 2`.
 - League picker chips and badges must not render weak ESPN abbreviations such as `2.` when a clearer normalized label like `2. Bundesliga` is available.
 - League picker groups should sort competitions by natural league order, such as `eng.1`, then `eng.2`, then domestic cups, instead of pure alphabetic order.
+- Livescore page should show live count, last updated time, manual refresh, compact filter chips, and league-grouped match rows.
+- Livescore match rows should show ESPN live status/minute text instead of kickoff time.
 
-Navigation should remain minimal: Fixtures, Results, Standings, Leagues.
+Navigation should remain minimal: Fixtures/Results, Live, Standings, Teams.
 
 ## Accessibility
 

@@ -119,8 +119,10 @@ describe('fixturesStore', () => {
       slug: 'usa.1',
       name: 'MLS',
       shortName: 'MLS',
-      groupLabel: 'USA',
-      groupType: 'other',
+      groupLabel: 'United States',
+      groupType: 'country',
+      countryCode: 'USA',
+      confederation: 'CONCACAF',
       isExcludedFromTeamSchedule: false
     });
   });

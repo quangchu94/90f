@@ -61,13 +61,20 @@ Implementation rules:
 - Favorite teams are local-only and persisted in client storage.
 - Do not add player detail pages in Phase 2 unless explicitly requested.
 
-### Phase 3: Match Stats & Player Stats
+### Phase 3: Livescore
+
+- Dedicated live scores page for matches currently in progress.
+- Use ESPN all-soccer scoreboard for the current local date when available.
+- Show live count, last-updated time, manual refresh, favorite-league filters, and grouped live match rows.
+- Poll only while live matches are visible and the document is active.
+- Keep stale live data visible if refresh fails.
+
+### Phase 4: Match Stats & Player Stats
 
 - Match statistics where ESPN provides data.
 - Timeline/play-by-play for goals, cards, substitutions, and major events.
 - Timeline goal labels use `(P)` after the scorer for penalty goals and `(F)` for free-kick goals.
 - Player statistics where ESPN soccer endpoints support them.
-- Better live-match refresh behavior.
 - More complete match detail page.
 
 ## Done Criteria

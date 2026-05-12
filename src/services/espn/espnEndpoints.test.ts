@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildLiveScoreboardUrl,
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
   buildSoccerLeagueDetailUrl,
@@ -11,6 +12,12 @@ describe('espn endpoints', () => {
   it('builds same-origin scoreboard URLs by default', () => {
     expect(buildScoreboardUrl('eng.1', '20260508')).toBe(
       '/api/espn/site/sports/soccer/eng.1/scoreboard?dates=20260508'
+    );
+  });
+
+  it('builds all-soccer live scoreboard URLs', () => {
+    expect(buildLiveScoreboardUrl('20260508')).toBe(
+      '/api/espn/site/sports/soccer/all/scoreboard?dates=20260508&limit=200'
     );
   });
 

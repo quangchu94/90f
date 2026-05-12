@@ -36,10 +36,15 @@
         </div>
 
         <div class="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <div class="min-w-0 text-center">
+          <RouterLink
+            :to="homeTeamRoute"
+            :aria-label="`Xem lịch đấu và kết quả của ${match.homeTeam.name}`"
+            class="block min-w-0 rounded text-center transition hover:text-app-amber focus:outline-none focus:ring-2 focus:ring-app-accent focus:ring-offset-2 focus:ring-offset-app-surface"
+            data-testid="home-team-link"
+          >
             <TeamLogo :src="match.homeTeam.logoUrl" :alt="match.homeTeam.name" :fallback-name="match.homeTeam.shortName" class="mx-auto h-14 w-14" />
             <p class="mt-3 truncate text-sm font-bold sm:text-base">{{ match.homeTeam.name }}</p>
-          </div>
+          </RouterLink>
 
           <div class="rounded border border-app-border bg-app-elevated px-4 py-3 text-center">
             <p class="text-3xl font-black">{{ scoreLabel(match.homeScore) }} - {{ scoreLabel(match.awayScore) }}</p>
@@ -49,10 +54,15 @@
             <p class="mt-1 text-xs font-semibold text-app-amber">{{ timeLabel }}</p>
           </div>
 
-          <div class="min-w-0 text-center">
+          <RouterLink
+            :to="awayTeamRoute"
+            :aria-label="`Xem lịch đấu và kết quả của ${match.awayTeam.name}`"
+            class="block min-w-0 rounded text-center transition hover:text-app-amber focus:outline-none focus:ring-2 focus:ring-app-accent focus:ring-offset-2 focus:ring-offset-app-surface"
+            data-testid="away-team-link"
+          >
             <TeamLogo :src="match.awayTeam.logoUrl" :alt="match.awayTeam.name" :fallback-name="match.awayTeam.shortName" class="mx-auto h-14 w-14" />
             <p class="mt-3 truncate text-sm font-bold sm:text-base">{{ match.awayTeam.name }}</p>
-          </div>
+          </RouterLink>
         </div>
       </div>
 
@@ -166,6 +176,20 @@ const leagueLabel = computed(() =>
     ? match.value.leagueShortName ?? getLeagueShortName(match.value.leagueSlug, undefined, match.value.leagueName)
     : ''
 );
+const homeTeamRoute = computed(() => ({
+  name: 'team-detail',
+  params: {
+    leagueSlug: match.value?.leagueSlug ?? props.leagueSlug,
+    teamId: match.value?.homeTeam.id ?? ''
+  }
+}));
+const awayTeamRoute = computed(() => ({
+  name: 'team-detail',
+  params: {
+    leagueSlug: match.value?.leagueSlug ?? props.leagueSlug,
+    teamId: match.value?.awayTeam.id ?? ''
+  }
+}));
 
 function scoreLabel(score: number | undefined): string {
   return score === undefined ? '-' : `${score}`;

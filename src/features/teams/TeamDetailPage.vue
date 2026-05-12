@@ -170,14 +170,12 @@
 import { computed, ref, toRefs, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  getLeagueBySlug,
-  getLeagueShortName,
-  getSupportedLeagueFallback,
-  isSupportedLeagueSlug
+  getLeagueShortName
 } from '@/domain/leagues';
 import type { PlayerSummary } from '@/domain/models';
 import { isResultStatus, isUpcomingStatus } from '@/domain/status';
 import { useTeamDetail } from '@/composables/useTeamDetail';
+import { useTeamRouteLeague } from '@/composables/useTeamRouteLeague';
 import { useTeamRoster } from '@/composables/useTeamRoster';
 import { useTeamSchedule } from '@/composables/useTeamSchedule';
 import { usePreferencesStore } from '@/stores/preferencesStore';
@@ -193,16 +191,19 @@ const props = defineProps<{
   teamId: string;
 }>();
 
-const { teamId } = toRefs(props);
+const { leagueSlug, teamId } = toRefs(props);
 const route = useRoute();
 const router = useRouter();
 const preferences = usePreferencesStore();
 const activeScheduleTab = ref<FixtureMode>(parseScheduleTab(route.query.tab));
 const activeScheduleLeague = ref(parseScheduleLeague(route.query.league));
-const effectiveLeagueSlug = computed(() =>
-  isSupportedLeagueSlug(props.leagueSlug) ? props.leagueSlug : getSupportedLeagueFallback(props.leagueSlug)
-);
-const isSupportedLeague = computed(() => isSupportedLeagueSlug(effectiveLeagueSlug.value));
+const {
+  effectiveLeague,
+  effectiveLeagueSlug,
+  canUseLeague: isSupportedLeague,
+  shouldRedirect,
+  fallbackLeagueSlug
+} = useTeamRouteLeague(leagueSlug);
 const {
   data: team,
   isLoading: teamIsLoading,
@@ -223,7 +224,7 @@ const {
   refetch: refetchSchedule
 } = useTeamSchedule(effectiveLeagueSlug, teamId, isSupportedLeague);
 const leagueName = computed(() => {
-  const league = getLeagueBySlug(effectiveLeagueSlug.value);
+  const league = effectiveLeague.value;
   return getLeagueShortName(league.slug, league.shortName, league.name);
 });
 const teamVenue = computed(() => team.value?.venue ?? inferredHomeVenue.value ?? 'Chưa có dữ liệu');
@@ -273,12 +274,12 @@ const visibleSchedule = computed(() => {
 });
 
 watch(
-  () => props.leagueSlug,
-  (slug) => {
-    if (!isSupportedLeagueSlug(slug)) {
+  () => [props.leagueSlug, shouldRedirect.value] as const,
+  ([, shouldReplace]) => {
+    if (shouldReplace) {
       void router.replace({
         name: 'team-detail',
-        params: { leagueSlug: getSupportedLeagueFallback(slug), teamId: props.teamId },
+        params: { leagueSlug: fallbackLeagueSlug.value, teamId: props.teamId },
         query: route.query
       });
     }

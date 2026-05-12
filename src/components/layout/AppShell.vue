@@ -18,6 +18,12 @@
             Kết quả
           </RouterLink>
           <RouterLink
+            to="/live"
+            class="rounded px-2 py-2 transition hover:bg-app-surface hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent sm:px-3"
+          >
+            Live
+          </RouterLink>
+          <RouterLink
             :to="{ name: 'standings', params: { leagueSlug: defaultLeagueSlug } }"
             class="rounded px-2 py-2 transition hover:bg-app-surface hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-accent sm:px-3"
           >
