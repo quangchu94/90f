@@ -136,8 +136,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, toRefs, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import type { MatchEvent, MatchEventType } from '@/domain/models';
 import { getLeagueShortName } from '@/domain/leagues';
 import { useMatchSummary } from '@/composables/useMatchSummary';
@@ -153,6 +153,7 @@ const props = defineProps<{
 
 const { leagueSlug, eventId } = toRefs(props);
 const route = useRoute();
+const router = useRouter();
 const { data: match, isLoading, isError, refetch } = useMatchSummary(leagueSlug, eventId);
 const backTarget = computed(() => getSafeReturnTo(route.query.returnTo));
 
@@ -190,6 +191,22 @@ const awayTeamRoute = computed(() => ({
     teamId: match.value?.awayTeam.id ?? ''
   }
 }));
+
+watch(
+  () => match.value?.leagueSlug,
+  (canonicalLeagueSlug) => {
+    if (!canonicalLeagueSlug || canonicalLeagueSlug === props.leagueSlug || isLoading.value || isError.value) {
+      return;
+    }
+
+    void router.replace({
+      name: 'match-detail',
+      params: { leagueSlug: canonicalLeagueSlug, eventId: props.eventId },
+      query: route.query
+    });
+  },
+  { immediate: true }
+);
 
 function scoreLabel(score: number | undefined): string {
   return score === undefined ? '-' : `${score}`;

@@ -32,7 +32,8 @@
 - Team detail `Kết quả` sorts newest first.
 - Team detail `Lịch đấu` sorts nearest upcoming first.
 - ESPN team schedule responses must not be assumed to include stable `response.leagues` or `event.leagues`.
-- League-specific schedule events use the requested endpoint league as source metadata.
+- Event cards must resolve canonical league metadata from event-level ESPN data before using the requested/source endpoint league.
+- League-specific schedule events use the requested endpoint league only as low-priority source metadata.
 - All-fixture events infer league from `event.season.displayName` or `event.seasonType.name`.
 - Unknown all-fixture events must not fallback to the route league.
 - Team detail schedule/results should render partial data as soon as individual league schedule requests return; do not wait for every scoped schedule endpoint to settle before showing the first matches.
@@ -45,6 +46,11 @@
 - Display ESPN rank as-is; never replace it with `index + 1`.
 - Do not insert blank rows for missing ranks.
 - Rows without rank stay after ranked rows in ESPN response order.
+
+## Match Detail
+
+- Match summary must use ESPN `header.league.slug` as the canonical league slug when present, even if the route league slug differs.
+- If ESPN omits `header.league.slug`, match summary may fallback to the route league slug.
 
 ## Livescore
 

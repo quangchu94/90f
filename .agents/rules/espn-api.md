@@ -23,6 +23,8 @@ Use these endpoint families:
 - Use `YYYYMMDD` for date query params.
 - Livescore should prefer `/sports/soccer/all/scoreboard` for the current local date to avoid fan-out across leagues.
 - Livescore must map per-event `event.leagues[0]` when available and fall back safely when ESPN omits league metadata.
+- Team fixture schedule fallback may return per-event `event.league` instead of `event.leagues`; treat `event.league.slug` as canonical before any source endpoint fallback.
+- Event links can expose canonical league slugs through `leagueAbbrev` or `/league/{slug}` URLs and may be used when structured event league fields are missing.
 - Standings for soccer should use `/apis/v2/`, not `/apis/site/v2/`.
 - Team detail should prefer Site API `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams/{teamId}`.
 - Core team venue data can be wrong for soccer clubs; use Core team detail only as a fallback and do not let it override Site API venue or a home `nextEvent` venue.

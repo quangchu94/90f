@@ -54,6 +54,7 @@ Suggested palette:
 - `/standings/:leagueSlug` league standings.
 - `/teams/:leagueSlug` team list.
 - `/team/:leagueSlug/:teamId` team detail.
+- Match detail should replace mismatched route league slugs with ESPN's canonical summary league slug without showing an extra warning.
 - Team and standings routes must not show raw unsupported slugs as league names; unsupported route leagues should replace to a supported fallback in the same country/confederation when possible.
 - League display labels should use curated or humanized names when ESPN catalog only provides a slug.
 - League labels must not show rough slug-derived names like `German 1` when a curated or common name is known; use labels such as `Bundesliga`.

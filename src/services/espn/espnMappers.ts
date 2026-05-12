@@ -40,17 +40,9 @@ export function mapScoreboardResponse(
   const fallbackLeague = response.leagues?.length === 1 ? response.leagues[0] : getLeagueBySlug(leagueSlug);
 
   return (response.events ?? []).map((event) => {
-    const eventLeague = event.leagues?.[0] ?? fallbackLeague;
-    const eventLeagueSlug = eventLeague.slug ?? fallbackLeague.slug ?? leagueSlug;
-    const eventLeagueName =
-      eventLeague.name ?? fallbackLeague.name ?? getLeagueBySlug(eventLeagueSlug).name;
-    const eventLeagueShortName = getLeagueShortName(
-      eventLeagueSlug,
-      getLeagueAbbreviation(eventLeague) ?? getLeagueAbbreviation(fallbackLeague),
-      eventLeagueName
-    );
+    const eventLeague = resolveEventLeague(event, fallbackLeague, leagueSlug);
 
-    return mapEventToFootballMatch(event, eventLeagueSlug, eventLeagueName, eventLeagueShortName);
+    return mapEventToFootballMatch(event, eventLeague.slug, eventLeague.name, eventLeague.shortName);
   });
 }
 
@@ -61,7 +53,12 @@ export function mapSummaryResponse(
 ): MatchDetail {
   const competition = response.header?.competitions?.[0];
   const competitors = competition?.competitors ?? [];
-  const league = response.header?.league ?? getLeagueBySlug(leagueSlug);
+  const canonicalLeagueSlug = response.header?.league?.slug ?? leagueSlug;
+  const league = response.header?.league ?? getLeagueBySlug(canonicalLeagueSlug);
+  const fallbackLeague = getLeagueBySlug(canonicalLeagueSlug);
+  const leagueAbbreviation = getLeagueAbbreviation(league);
+  const leagueShortNameHint =
+    leagueAbbreviation && leagueAbbreviation !== league.name ? leagueAbbreviation : fallbackLeague.shortName;
   const eventStatus = response.header?.status ?? competition?.status;
   const home = findCompetitor(competitors, 'home');
   const away = findCompetitor(competitors, 'away');
@@ -79,9 +76,9 @@ export function mapSummaryResponse(
 
   return {
     id: response.header?.id ?? eventId,
-    leagueSlug,
-    leagueName: league.name ?? getLeagueBySlug(leagueSlug).name,
-    leagueShortName: getLeagueShortName(leagueSlug, getLeagueAbbreviation(league), league.name),
+    leagueSlug: canonicalLeagueSlug,
+    leagueName: league.name ?? fallbackLeague.name,
+    leagueShortName: getLeagueShortName(canonicalLeagueSlug, leagueShortNameHint, league.name),
     kickoff: competition?.date ?? '',
     status,
     statusText: getStatusText(eventStatus, status),
@@ -217,6 +214,117 @@ function mapEventToFootballMatch(
     venue: competition?.venue?.fullName ?? competition?.venue?.displayName ?? competition?.venue?.name,
     neutralSite: competition?.neutralSite
   };
+}
+
+function resolveEventLeague(
+  event: EspnEvent,
+  fallbackLeague: { slug?: string; name?: string; displayName?: string; abbreviation?: string; shortName?: string },
+  routeLeagueSlug: string
+): { slug: string; name: string; shortName: string } {
+  const eventLeague =
+    event.leagues?.find((league) => league.slug) ??
+    (event.league?.slug ? event.league : undefined) ??
+    inferLeagueFromEventLinks(event) ??
+    inferLeagueFromEventText(event) ??
+    (event.sourceLeague?.slug ? event.sourceLeague : undefined) ??
+    fallbackLeague;
+  const slug = eventLeague.slug ?? routeLeagueSlug;
+  const fallback = getLeagueBySlug(slug);
+  const name = eventLeague.name ?? eventLeague.displayName ?? fallback.name;
+  const abbreviation = getLeagueAbbreviation(eventLeague) ?? fallback.shortName;
+
+  return {
+    slug,
+    name,
+    shortName: getLeagueShortName(slug, abbreviation, name)
+  };
+}
+
+function inferLeagueFromEventLinks(event: EspnEvent): EspnEvent['league'] | undefined {
+  const hrefs = event.links?.map((link) => link.href).filter((href): href is string => Boolean(href)) ?? [];
+
+  for (const href of hrefs) {
+    const slug =
+      href.match(/[?&]leagueAbbrev=([^&#]+)/)?.[1] ??
+      href.match(/\/league\/([^/?#]+)/)?.[1] ??
+      href.match(/\/leagues\/([^/?#]+)/)?.[1];
+
+    if (slug) {
+      const decodedSlug = decodeURIComponent(slug);
+      const league = getLeagueBySlug(decodedSlug);
+      return { slug: league.slug, name: league.name, abbreviation: league.shortName };
+    }
+  }
+
+  return undefined;
+}
+
+function inferLeagueFromEventText(event: EspnEvent): EspnEvent['league'] | undefined {
+  const text = [
+    event.season?.displayName,
+    event.season?.name,
+    event.seasonType?.displayName,
+    event.seasonType?.name
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  const slug = inferStaticLeagueSlugFromText(text);
+
+  if (!slug) {
+    return undefined;
+  }
+
+  const league = getLeagueBySlug(slug);
+  return { slug: league.slug, name: league.name, abbreviation: league.shortName };
+}
+
+function inferStaticLeagueSlugFromText(text: string): string | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  if (text.includes('uefa conference league')) {
+    return 'uefa.europa.conf';
+  }
+
+  if (text.includes('uefa champions league')) {
+    return 'uefa.champions';
+  }
+
+  if (text.includes('uefa europa league')) {
+    return 'uefa.europa';
+  }
+
+  if (text.includes('leagues cup')) {
+    return 'concacaf.leagues.cup';
+  }
+
+  if (text.includes('premier league')) {
+    return 'eng.1';
+  }
+
+  if (text.includes('spanish laliga') || text.includes('la liga') || text.includes('laliga')) {
+    return 'esp.1';
+  }
+
+  if (text.includes('german bundesliga') || text.includes('bundesliga')) {
+    return 'ger.1';
+  }
+
+  if (text.includes('italian serie a') || text.includes('serie a')) {
+    return 'ita.1';
+  }
+
+  if (text.includes('french ligue 1') || text.includes('ligue 1')) {
+    return 'fra.1';
+  }
+
+  if (text.includes('fifa world cup') || text.includes('world cup')) {
+    return 'fifa.world';
+  }
+
+  return undefined;
 }
 
 function findCompetitor(

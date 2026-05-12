@@ -77,6 +77,37 @@ describe('espn mappers', () => {
     expect(detail.events).toHaveLength(2);
   });
 
+  it('uses ESPN summary league slug as the canonical match detail slug', () => {
+    const summary = makeScheduledSummary();
+    summary.header = {
+      ...summary.header,
+      league: {
+        name: 'UEFA Conference League',
+        abbreviation: 'UEFA Conference League',
+        slug: 'uefa.europa.conf'
+      }
+    };
+
+    const detail = mapSummaryResponse(summary, 'eng.fa', '401862929');
+
+    expect(detail.leagueSlug).toBe('uefa.europa.conf');
+    expect(detail.leagueName).toBe('UEFA Conference League');
+    expect(detail.leagueShortName).toBe('UECL');
+  });
+
+  it('falls back to the route league slug when ESPN summary omits league slug', () => {
+    const summary = makeScheduledSummary();
+    summary.header = {
+      ...summary.header,
+      league: { name: 'Spanish LALIGA' }
+    };
+
+    const detail = mapSummaryResponse(summary, 'esp.1', '748491');
+
+    expect(detail.leagueSlug).toBe('esp.1');
+    expect(detail.leagueShortName).toBe('LaLiga');
+  });
+
   it('maps important match labels and penalty shootout scores', () => {
     const summary = makeScheduledSummary();
     summary.header = {
@@ -368,6 +399,108 @@ describe('espn mappers', () => {
       ['601', 'uefa.champions', 'UEFA Champions League']
     ]);
     expect(matches.map((match) => match.leagueShortName)).toEqual(['Ligue 1', 'UCL']);
+  });
+
+  it('uses event.league over source league for team schedule matches', () => {
+    const matches = mapTeamScheduleResponse(
+      {
+        leagues: [{ slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' }],
+        events: [
+          {
+            id: '401863595',
+            date: '2026-08-09T18:00:00Z',
+            league: { slug: 'concacaf.leagues.cup', name: 'Leagues Cup', abbreviation: 'Leagues Cup' },
+            sourceLeague: { slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' },
+            competitions: [
+              {
+                competitors: [
+                  {
+                    homeAway: 'home',
+                    team: { id: '20232', displayName: 'Inter Miami CF', shortDisplayName: 'Miami' }
+                  },
+                  {
+                    homeAway: 'away',
+                    team: { id: '220', displayName: 'Monterrey', shortDisplayName: 'Monterrey' }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      'esp.2'
+    );
+
+    expect(matches[0]).toMatchObject({
+      id: '401863595',
+      leagueSlug: 'concacaf.leagues.cup',
+      leagueName: 'Leagues Cup',
+      leagueShortName: 'Leagues Cup'
+    });
+  });
+
+  it('uses event links over source league for team schedule matches', () => {
+    const matches = mapTeamScheduleResponse(
+      {
+        leagues: [{ slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' }],
+        events: [
+          {
+            id: '401863595',
+            date: '2026-08-09T18:00:00Z',
+            links: [
+              {
+                href: 'sportscenter://x-callback-url/showGame?sportName=soccer&leagueAbbrev=concacaf.leagues.cup&gameId=401863595'
+              }
+            ],
+            sourceLeague: { slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' },
+            competitions: [{ competitors: [] }]
+          }
+        ]
+      },
+      'esp.2'
+    );
+
+    expect(matches[0].leagueSlug).toBe('concacaf.leagues.cup');
+  });
+
+  it('infers Leagues Cup from event season text before using source league', () => {
+    const matches = mapTeamScheduleResponse(
+      {
+        leagues: [{ slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' }],
+        events: [
+          {
+            id: '401863595',
+            date: '2026-08-09T18:00:00Z',
+            season: { displayName: '2026 Leagues Cup' },
+            seasonType: { name: 'League Phase' },
+            sourceLeague: { slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' },
+            competitions: [{ competitors: [] }]
+          }
+        ]
+      },
+      'esp.2'
+    );
+
+    expect(matches[0].leagueSlug).toBe('concacaf.leagues.cup');
+  });
+
+  it('uses source league only when no event-level league metadata is available', () => {
+    const matches = mapTeamScheduleResponse(
+      {
+        leagues: [{ slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' }],
+        events: [
+          {
+            id: '801',
+            date: '2026-08-09T18:00:00Z',
+            sourceLeague: { slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' },
+            competitions: [{ competitors: [] }]
+          }
+        ]
+      },
+      'esp.2'
+    );
+
+    expect(matches[0].leagueSlug).toBe('esp.2');
   });
 
   it('dedupes team schedule matches and keeps the more complete event', () => {

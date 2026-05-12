@@ -271,10 +271,10 @@ export function mergeTeamScheduleResponses(
   schedules: EspnTeamScheduleResponse[],
   catalogLeagues: LeagueSummary[]
 ): EspnTeamScheduleResponse {
-  const events = enrichEventsWithConcreteLeagues(
+  const events = dedupeScheduleEventsByLeagueConfidence(enrichEventsWithConcreteLeagues(
     schedules.flatMap((schedule) => schedule.events ?? []),
     catalogLeagues
-  ).filter(isRenderableScheduleEvent);
+  )).filter(isRenderableScheduleEvent);
 
   return {
     leagues: uniqueLeaguesFromEvents(events),
@@ -293,7 +293,7 @@ function withScheduleSourceLeague(
     leagues: [sourceLeague],
     events: response.events?.map((event) => ({
       ...event,
-      leagues: [sourceLeague]
+      sourceLeague
     }))
   };
 }
@@ -306,12 +306,20 @@ function enrichEventsWithConcreteLeagues(
 
   for (const event of events) {
     if (event.id && hasConcreteLeague(event)) {
-      leagueByEventId.set(event.id, event.leagues);
+      const existing = leagueByEventId.get(event.id);
+      if (!existing || eventLeagueConfidence(event) > leagueArrayConfidence(existing)) {
+        leagueByEventId.set(event.id, event.leagues);
+      }
     }
   }
 
   return events.map((event) => {
-    if (!event.id || hasConcreteLeague(event)) {
+    if (!event.id) {
+      const resolvedLeague = resolveTeamScheduleEventLeague(event, catalogLeagues);
+      return resolvedLeague && !hasConcreteLeague(event) ? { ...event, leagues: [resolvedLeague] } : event;
+    }
+
+    if (hasConcreteLeague(event)) {
       return event;
     }
 
@@ -320,8 +328,8 @@ function enrichEventsWithConcreteLeagues(
       return { ...event, leagues: concreteLeagues };
     }
 
-    const inferredLeague = inferLeagueFromTeamScheduleEvent(event, catalogLeagues);
-    return inferredLeague ? { ...event, leagues: [inferredLeague] } : event;
+    const resolvedLeague = resolveTeamScheduleEventLeague(event, catalogLeagues);
+    return resolvedLeague ? { ...event, leagues: [resolvedLeague] } : event;
   });
 }
 
@@ -330,7 +338,7 @@ function hasConcreteLeague(event: NonNullable<EspnTeamScheduleResponse['events']
 }
 
 function isRenderableScheduleEvent(event: NonNullable<EspnTeamScheduleResponse['events']>[number]): boolean {
-  const league = event.leagues?.[0];
+  const league = event.leagues?.[0] ?? event.league ?? event.sourceLeague;
 
   if (!league?.slug) {
     return false;
@@ -343,10 +351,20 @@ function isRenderableScheduleEvent(event: NonNullable<EspnTeamScheduleResponse['
   }).isExcludedFromTeamSchedule;
 }
 
-function inferLeagueFromTeamScheduleEvent(
+function resolveTeamScheduleEventLeague(
   event: NonNullable<EspnTeamScheduleResponse['events']>[number],
   catalogLeagues: LeagueSummary[]
 ): { slug: string; name: string; abbreviation?: string } | undefined {
+  const eventLeague = event.leagues?.find((league) => league.slug) ?? (event.league?.slug ? event.league : undefined);
+  if (eventLeague?.slug) {
+    return normalizeScheduleLeague(eventLeague, catalogLeagues);
+  }
+
+  const linkLeagueSlug = parseLeagueSlugFromEventLinks(event);
+  if (linkLeagueSlug) {
+    return normalizeScheduleLeague({ slug: linkLeagueSlug }, catalogLeagues);
+  }
+
   const text = [
     event.season?.displayName,
     event.season?.name,
@@ -359,6 +377,22 @@ function inferLeagueFromTeamScheduleEvent(
 
   const slug = inferLeagueSlugFromText(text, catalogLeagues);
 
+  if (slug) {
+    return normalizeScheduleLeague({ slug }, catalogLeagues);
+  }
+
+  if (event.sourceLeague?.slug) {
+    return normalizeScheduleLeague(event.sourceLeague, catalogLeagues);
+  }
+
+  return undefined;
+}
+
+function normalizeScheduleLeague(
+  sourceLeague: { slug?: string; name?: string; displayName?: string; abbreviation?: string; shortName?: string },
+  catalogLeagues: LeagueSummary[]
+): { slug: string; name: string; abbreviation?: string } | undefined {
+  const slug = sourceLeague.slug;
   if (!slug) {
     return undefined;
   }
@@ -366,8 +400,8 @@ function inferLeagueFromTeamScheduleEvent(
   const league = catalogLeagues.find((item) => item.slug === slug) ?? getLeagueBySlug(slug);
   const enrichedLeague = enrichLeagueMetadata({
     slug: league.slug,
-    name: league.name,
-    shortName: league.shortName
+    name: sourceLeague.name ?? sourceLeague.displayName ?? league.name,
+    shortName: sourceLeague.abbreviation ?? sourceLeague.shortName ?? league.shortName
   });
 
   return {
@@ -375,6 +409,77 @@ function inferLeagueFromTeamScheduleEvent(
     name: enrichedLeague.name,
     abbreviation: enrichedLeague.shortName
   };
+}
+
+function parseLeagueSlugFromEventLinks(
+  event: NonNullable<EspnTeamScheduleResponse['events']>[number]
+): string | undefined {
+  for (const link of event.links ?? []) {
+    const href = link.href;
+    if (!href) {
+      continue;
+    }
+
+    const slug =
+      href.match(/[?&]leagueAbbrev=([^&#]+)/)?.[1] ??
+      href.match(/\/league\/([^/?#]+)/)?.[1] ??
+      href.match(/\/leagues\/([^/?#]+)/)?.[1];
+
+    if (slug) {
+      return decodeURIComponent(slug);
+    }
+  }
+
+  return undefined;
+}
+
+function dedupeScheduleEventsByLeagueConfidence(
+  events: NonNullable<EspnTeamScheduleResponse['events']>
+): NonNullable<EspnTeamScheduleResponse['events']> {
+  const byId = new Map<string, NonNullable<EspnTeamScheduleResponse['events']>[number]>();
+  const eventsWithoutId: NonNullable<EspnTeamScheduleResponse['events']> = [];
+
+  for (const event of events) {
+    if (!event.id) {
+      eventsWithoutId.push(event);
+      continue;
+    }
+
+    const existing = byId.get(event.id);
+    if (!existing || eventLeagueConfidence(event) >= eventLeagueConfidence(existing)) {
+      byId.set(event.id, event);
+    }
+  }
+
+  return [...eventsWithoutId, ...byId.values()];
+}
+
+function eventLeagueConfidence(event: NonNullable<EspnTeamScheduleResponse['events']>[number]): number {
+  if (event.leagues?.[0]?.slug && event.leagues[0].slug !== event.sourceLeague?.slug) {
+    return 5;
+  }
+
+  if (event.league?.slug) {
+    return 4;
+  }
+
+  if (parseLeagueSlugFromEventLinks(event)) {
+    return 3;
+  }
+
+  if (event.season?.displayName || event.season?.name || event.seasonType?.displayName || event.seasonType?.name) {
+    return 2;
+  }
+
+  if (event.sourceLeague?.slug) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function leagueArrayConfidence(leagues: NonNullable<EspnTeamScheduleResponse['events']>[number]['leagues']): number {
+  return leagues?.[0]?.slug ? 5 : 0;
 }
 
 function inferLeagueSlugFromText(text: string, catalogLeagues: LeagueSummary[]): string | undefined {
@@ -404,6 +509,14 @@ function inferStaticLeagueSlugFromText(text: string): string | undefined {
 
   if (text.includes('uefa europa league')) {
     return 'uefa.europa';
+  }
+
+  if (text.includes('uefa conference league')) {
+    return 'uefa.europa.conf';
+  }
+
+  if (text.includes('leagues cup')) {
+    return 'concacaf.leagues.cup';
   }
 
   if (text.includes('premier league')) {

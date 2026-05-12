@@ -6,7 +6,8 @@ import {
   fetchSoccerLeagues,
   fetchSoccerLeaguesForPicker,
   fetchTeamDetail,
-  fetchTeamSchedule
+  fetchTeamSchedule,
+  mergeTeamScheduleResponses
 } from './espnClient';
 import type { EspnTeamScheduleResponse } from './espnTypes';
 
@@ -266,13 +267,44 @@ describe('espn client', () => {
     });
 
     const schedule = await fetchTeamSchedule('fra.1', '160', undefined);
-    const allFixtureEvent = schedule.events?.find(
-      (event, index) => event.id === 'shared-fixture' && index > 0
-    );
+    const allFixtureEvent = schedule.events?.find((event) => event.id === 'shared-fixture');
 
     expect(allFixtureEvent?.leagues?.[0]).toMatchObject({
       slug: 'uefa.champions',
       name: 'UEFA Champions League'
+    });
+  });
+
+  it('keeps canonical event league over source-only duplicate schedules', () => {
+    const merged = mergeTeamScheduleResponses(
+      [
+        {
+          events: [
+            {
+              ...makeEvent('401863595'),
+              sourceLeague: { slug: 'esp.2', name: 'Spanish LALIGA 2', abbreviation: 'LALIGA 2' }
+            }
+          ]
+        },
+        {
+          events: [
+            {
+              ...makeEvent('401863595', '2026 Leagues Cup'),
+              league: { slug: 'concacaf.leagues.cup', name: 'Leagues Cup', abbreviation: 'Leagues Cup' }
+            }
+          ]
+        }
+      ],
+      [
+        { slug: 'esp.2', name: 'Spanish LALIGA 2', shortName: 'LALIGA 2' },
+        { slug: 'concacaf.leagues.cup', name: 'Leagues Cup', shortName: 'Leagues Cup' }
+      ]
+    );
+
+    expect(merged.events).toHaveLength(1);
+    expect(merged.events?.[0].leagues?.[0]).toMatchObject({
+      slug: 'concacaf.leagues.cup',
+      name: 'Leagues Cup'
     });
   });
 

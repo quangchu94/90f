@@ -153,6 +153,12 @@ export interface EspnEvent {
   status?: EspnEventStatus;
   competitions?: EspnCompetition[];
   leagues?: EspnLeague[];
+  league?: EspnLeague;
+  links?: Array<{
+    href?: string;
+    rel?: string[];
+  }>;
+  sourceLeague?: EspnLeague;
 }
 
 export interface EspnScoreboardResponse {

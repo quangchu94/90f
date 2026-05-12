@@ -10,6 +10,8 @@ Primary user goals:
 - Filter by league, result/fixture mode, expandable date range, match status, and favorite competitions.
 - Use favorite competitions as the user-facing league selector source across fixtures, livescore, standings, and teams.
 - Open a match detail view with score, teams, time/status, venue, broadcast/meta, and summary data when available.
+- Match detail and team links from match detail should use the canonical ESPN league slug from summary data when ESPN provides one.
+- Match cards, team schedule rows, livescore rows, and match detail should use the canonical ESPN league slug when event-level metadata provides one.
 - Read important match tags, penalty shootout totals, and concise goal qualifiers in match detail when ESPN provides enough data.
 - Knockout matches should show round tags such as `Tứ kết`, `Bán kết`, and `Chung kết` when ESPN provides stage/season metadata.
 - View league standings where ESPN supports reliable data.

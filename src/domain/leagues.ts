@@ -10,6 +10,8 @@ const CURATED_LEAGUE_NAMES: Record<string, { name: string; shortName?: string }>
   'ita.2': { name: 'Italian Serie B', shortName: 'Italian Serie B' },
   'fra.1': { name: 'Ligue 1', shortName: 'Ligue 1' },
   'usa.1': { name: 'MLS', shortName: 'MLS' },
+  'uefa.europa.conf': { name: 'UEFA Conference League', shortName: 'UECL' },
+  'concacaf.leagues.cup': { name: 'Leagues Cup', shortName: 'Leagues Cup' },
   'ger.dfb_pokal': { name: 'German Cup', shortName: 'DFB Pokal' },
   'esp.copa_del_rey': { name: 'Spanish Copa del Rey', shortName: 'Copa del Rey' }
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   enrichLeagueMetadata,
+  getLeagueBySlug,
   getLeagueShortName,
   getSupportedLeagueFallback,
   getTeamScheduleCandidateLeagues,
@@ -136,6 +137,16 @@ describe('league metadata', () => {
       'concacaf.champions',
       'fifa.world'
     ]);
+  });
+
+  it('uses curated metadata for Leagues Cup', () => {
+    expect(getLeagueBySlug('concacaf.leagues.cup')).toMatchObject({
+      slug: 'concacaf.leagues.cup',
+      name: 'Leagues Cup',
+      shortName: 'Leagues Cup',
+      groupType: 'continental',
+      confederation: 'CONCACAF'
+    });
   });
 
 
