@@ -15,7 +15,7 @@ Primary user goals:
 - Match cards, team schedule rows, livescore rows, and match detail should use the canonical ESPN league slug when event-level metadata provides one.
 - Read important match tags, penalty shootout totals, and concise goal qualifiers in match detail when ESPN provides enough data.
 - Knockout matches should show round tags such as `Tứ kết`, `Bán kết`, and `Chung kết` when ESPN provides stage/season metadata.
-- View league standings where ESPN supports reliable data.
+- View league standings by competition and season where ESPN supports reliable data.
 
 Keep the product focused. Do not add betting, accounts, comments, paid features, or admin flows unless explicitly requested.
 
@@ -49,7 +49,7 @@ Avoid introducing a backend, server functions, database, auth provider, global e
 
 ### Phase 2: League & Team
 
-- League standings.
+- League standings, including season navigation where ESPN provides historical seasons.
 - Team list.
 - Team detail page.
 - Roster.

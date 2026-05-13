@@ -131,6 +131,16 @@ export interface EspnLeagueCollectionResponse {
   leagues?: EspnLeague[];
 }
 
+export interface EspnSeasonCollectionResponse {
+  items?: Array<{
+    $ref?: string;
+    year?: number | string;
+    displayName?: string;
+    name?: string;
+    abbreviation?: string;
+  }>;
+}
+
 export interface EspnEvent {
   id?: string;
   uid?: string;

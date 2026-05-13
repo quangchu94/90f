@@ -38,6 +38,8 @@ Suggested palette:
 - Match rows must be responsive on narrow viewports; meta/status/score must not overlap or squeeze team names beyond truncation.
 - Standings with multiple groups use a shared fixed column layout so columns align.
 - Standings on mobile must show rank, team, played, wins, draws, losses, goal difference, and points in one viewport without relying on horizontal scrolling.
+- Standings league selector belongs in the standings control header, not the page title header.
+- Standings season navigation uses compact left/right arrow buttons; the right arrow must be disabled on the current/latest season.
 - Buttons and filters must have visible active, hover, focus, loading, and disabled states.
 - Text must not overflow buttons, cards, tabs, or match rows.
 - Use icons where helpful for calendar, trophy, search, chevron, star/favorite, refresh, and status.
@@ -66,6 +68,9 @@ Suggested palette:
 - User-visible picker/card league labels should use the normalized `shortName` first, with normalized full `name` only as a fallback when `shortName` is missing.
 - Standings and Teams selectors should list favorite leagues, while preserving valid deep-link route leagues even when the route league is not currently a favorite.
 - League picker groups should be collapsible by country/continent/world; search results should auto-expand matching groups.
+- League picker on mobile must use a near full-screen, `dvh`-based modal layout when search is available; avoid bottom-sheet positioning that can be pushed below the viewport by the mobile keyboard.
+- League picker header/search must remain visible while the result list scrolls independently.
+- League picker search must show the current matching result count when the list is filtered.
 - League picker should prefer enriched ESPN detail `shortName` labels such as `EFL Championship` and `Italian Serie B` over slug-derived fallbacks like `English 2` or `Italian 2`.
 - League picker chips and badges must not render weak ESPN abbreviations such as `2.` when a clearer normalized label like `2. Bundesliga` is available.
 - League picker groups should sort competitions by natural league order, such as `eng.1`, then `eng.2`, then domestic cups, instead of pure alphabetic order.

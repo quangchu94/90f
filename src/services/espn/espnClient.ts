@@ -10,6 +10,7 @@ import {
   buildSiteAthleteGamelogUrl,
   buildSiteAthleteSplitsUrl,
   buildSoccerLeagueDetailUrl,
+  buildSoccerLeagueSeasonsUrl,
   buildSoccerLeaguesUrl,
   buildStandingsUrl,
   buildTeamDetailUrl,
@@ -25,7 +26,7 @@ import {
   INITIAL_LEAGUES,
   mergeLeagueSummaries
 } from '@/domain/leagues';
-import type { LeagueSummary } from '@/domain/models';
+import type { LeagueSummary, SeasonOption } from '@/domain/models';
 import type {
   EspnAthleteDetailResponse,
   EspnLeague,
@@ -33,6 +34,7 @@ import type {
   EspnPlayerStatsResponse,
   EspnRosterResponse,
   EspnScoreboardResponse,
+  EspnSeasonCollectionResponse,
   EspnStandingsResponse,
   EspnSummaryResponse,
   EspnTeamDetailResponse,
@@ -136,9 +138,10 @@ export async function fetchMatchSummary(
 
 export async function fetchStandings(
   leagueSlug: string,
+  season?: string,
   signal?: AbortSignal
 ): Promise<EspnStandingsResponse> {
-  return espnHttpClient.getJson<EspnStandingsResponse>(buildStandingsUrl(leagueSlug), signal);
+  return espnHttpClient.getJson<EspnStandingsResponse>(buildStandingsUrl(leagueSlug, season), signal);
 }
 
 export async function fetchTeams(
@@ -174,6 +177,21 @@ export async function fetchSoccerLeagueDetail(
   }
 
   return league;
+}
+
+export async function fetchSoccerLeagueSeasons(
+  leagueSlug: string,
+  signal?: AbortSignal
+): Promise<SeasonOption[]> {
+  const response = await espnHttpClient.getJson<EspnSeasonCollectionResponse>(
+    buildSoccerLeagueSeasonsUrl(leagueSlug),
+    signal
+  );
+  const seasons = (response.items ?? [])
+    .map(mapEspnSeasonOption)
+    .filter(isSeasonOption);
+
+  return seasons.sort((a, b) => Number(b.value) - Number(a.value));
 }
 
 export async function fetchSoccerLeagueDetailsForPicker(
@@ -631,8 +649,36 @@ function isLeagueSummary(value: LeagueSummary | undefined): value is LeagueSumma
   return Boolean(value?.slug && value.name);
 }
 
+function mapEspnSeasonOption(
+  season: NonNullable<EspnSeasonCollectionResponse['items']>[number]
+): SeasonOption | undefined {
+  const value = String(season.year ?? parseSeasonYearFromUrl(season.$ref) ?? '');
+
+  if (!/^\d{4}$/.test(value)) {
+    return undefined;
+  }
+
+  return {
+    value,
+    label: season.displayName ?? season.name ?? season.abbreviation ?? formatSeasonLabel(value)
+  };
+}
+
+function isSeasonOption(value: SeasonOption | undefined): value is SeasonOption {
+  return Boolean(value?.value && value.label);
+}
+
 function parseLeagueSlugFromUrl(url: string | undefined): string | undefined {
   return url?.match(/\/leagues\/([^/?#]+)/)?.[1];
+}
+
+function parseSeasonYearFromUrl(url: string | undefined): string | undefined {
+  return url?.match(/\/seasons\/(\d{4})(?:[/?#]|$)/)?.[1];
+}
+
+function formatSeasonLabel(value: string): string {
+  const year = Number(value);
+  return `${year}-${String((year + 1) % 100).padStart(2, '0')}`;
 }
 
 async function allSettledWithConcurrency<T, R>(

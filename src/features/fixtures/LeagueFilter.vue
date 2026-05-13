@@ -21,14 +21,17 @@
 
     <div
       v-if="isPickerOpen"
-      class="fixed inset-0 z-50 flex items-end bg-black/60 p-3 sm:items-center sm:justify-center"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-3 pt-4 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Chọn giải đấu"
       @click.self="closePicker"
     >
-      <div class="max-h-[82vh] w-full max-w-xl overflow-hidden rounded border border-app-border bg-app-surface shadow-xl">
-        <div class="border-b border-app-border p-4">
+      <div
+        data-testid="league-picker-panel"
+        class="flex h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded border border-app-border bg-app-surface pb-[env(safe-area-inset-bottom)] shadow-xl sm:h-auto sm:max-h-[82dvh]"
+      >
+        <div class="shrink-0 border-b border-app-border p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
               <h2 class="text-base font-bold">Chọn giải đấu</h2>
@@ -48,9 +51,10 @@
             class="mt-4 h-11 w-full rounded border border-app-border bg-app-bg px-3 text-sm text-app-text outline-none transition placeholder:text-app-muted focus:border-app-accent focus:ring-2 focus:ring-app-accent/30"
             placeholder="Tìm theo tên hoặc slug"
           />
+          <p class="mt-2 text-xs font-semibold text-app-secondary">{{ resultCountLabel }}</p>
         </div>
 
-        <div class="max-h-[52vh] overflow-y-auto p-2">
+        <div data-testid="league-picker-results" class="min-h-0 flex-1 overflow-y-auto p-2">
           <div v-if="isLoading" class="space-y-2 p-2">
             <div v-for="item in 8" :key="item" class="h-12 animate-pulse rounded bg-app-elevated" />
           </div>
@@ -170,6 +174,7 @@ const groupedLeagues = computed(() => {
       leagues: sortLeaguesWithinGroup(leagues)
     })));
 });
+const resultCountLabel = computed(() => `${filteredLeagues.value.length} giải phù hợp`);
 
 function buttonClass(leagueSlug: string): string {
   const base =

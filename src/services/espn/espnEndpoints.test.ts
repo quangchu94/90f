@@ -4,7 +4,9 @@ import {
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
   buildSoccerLeagueDetailUrl,
+  buildSoccerLeagueSeasonsUrl,
   buildSoccerLeaguesUrl,
+  buildStandingsUrl,
   buildTeamFixtureScheduleUrl
 } from './espnEndpoints';
 
@@ -18,6 +20,13 @@ describe('espn endpoints', () => {
   it('builds all-soccer live scoreboard URLs', () => {
     expect(buildLiveScoreboardUrl('20260508')).toBe(
       '/api/espn/site/sports/soccer/all/scoreboard?dates=20260508&limit=200'
+    );
+  });
+
+  it('builds standings URLs with an optional season query', () => {
+    expect(buildStandingsUrl('eng.1')).toBe('/api/espn/v2/sports/soccer/eng.1/standings');
+    expect(buildStandingsUrl('eng.1', '2024')).toBe(
+      '/api/espn/v2/sports/soccer/eng.1/standings?season=2024'
     );
   });
 
@@ -42,6 +51,12 @@ describe('espn endpoints', () => {
   it('builds core soccer league detail URLs', () => {
     expect(buildSoccerLeagueDetailUrl('eng.2')).toBe(
       '/api/espn/core/sports/soccer/leagues/eng.2?lang=en&region=us'
+    );
+  });
+
+  it('builds core soccer league seasons URLs', () => {
+    expect(buildSoccerLeagueSeasonsUrl('eng.1')).toBe(
+      '/api/espn/core/sports/soccer/leagues/eng.1/seasons?limit=20'
     );
   });
 });

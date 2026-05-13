@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   espnHttpClient,
+  fetchStandings,
   fetchPlayerSeasonStats,
   fetchSoccerLeagueDetail,
   fetchSoccerLeagueDetailsForPicker,
+  fetchSoccerLeagueSeasons,
   fetchSoccerLeagues,
   fetchSoccerLeaguesForPicker,
   fetchTeamDetail,
@@ -81,6 +83,39 @@ describe('espn client', () => {
     });
     expect(espnHttpClient.getJson).toHaveBeenCalledWith(
       '/api/espn/core/sports/soccer/leagues/eng.2?lang=en&region=us',
+      undefined
+    );
+  });
+
+  it('fetches and maps soccer league seasons from core refs', async () => {
+    vi.spyOn(espnHttpClient, 'getJson').mockResolvedValue({
+      items: [
+        {
+          $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/seasons/2025?lang=en&region=us'
+        },
+        {
+          $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/seasons/2024?lang=en&region=us'
+        }
+      ]
+    });
+
+    await expect(fetchSoccerLeagueSeasons('eng.1')).resolves.toEqual([
+      { value: '2025', label: '2025-26' },
+      { value: '2024', label: '2024-25' }
+    ]);
+    expect(espnHttpClient.getJson).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.1/seasons?limit=20',
+      undefined
+    );
+  });
+
+  it('fetches standings with a season query when provided', async () => {
+    vi.spyOn(espnHttpClient, 'getJson').mockResolvedValue({ standings: { entries: [] } });
+
+    await fetchStandings('eng.1', '2024');
+
+    expect(espnHttpClient.getJson).toHaveBeenCalledWith(
+      '/api/espn/v2/sports/soccer/eng.1/standings?season=2024',
       undefined
     );
   });

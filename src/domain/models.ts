@@ -32,6 +32,11 @@ export interface StandingGroup {
   rows: StandingRow[];
 }
 
+export interface SeasonOption {
+  value: string;
+  label: string;
+}
+
 export interface StandingRow {
   id: string;
   rank?: number;

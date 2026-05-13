@@ -22,8 +22,15 @@ export function buildMatchSummaryUrl(leagueSlug: string, eventId: string): strin
   return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/summary?${params.toString()}`;
 }
 
-export function buildStandingsUrl(leagueSlug: string): string {
-  return `${standingsApiBaseUrl}/sports/soccer/${leagueSlug}/standings`;
+export function buildStandingsUrl(leagueSlug: string, season?: string): string {
+  const url = `${standingsApiBaseUrl}/sports/soccer/${leagueSlug}/standings`;
+
+  if (!season) {
+    return url;
+  }
+
+  const params = new URLSearchParams({ season });
+  return `${url}?${params.toString()}`;
 }
 
 export function buildTeamsUrl(leagueSlug: string): string {
@@ -79,6 +86,11 @@ export function buildSoccerLeaguesUrl(): string {
 export function buildSoccerLeagueDetailUrl(leagueSlug: string): string {
   const params = new URLSearchParams({ lang: 'en', region: 'us' });
   return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}?${params.toString()}`;
+}
+
+export function buildSoccerLeagueSeasonsUrl(leagueSlug: string): string {
+  const params = new URLSearchParams({ limit: '20' });
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}/seasons?${params.toString()}`;
 }
 
 export function buildProxiedEspnRefUrl(refUrl: string): string {

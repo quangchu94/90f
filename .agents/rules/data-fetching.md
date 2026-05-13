@@ -41,7 +41,9 @@
 
 ## Standings
 
-- Soccer standings use `/apis/v2/sports/soccer/{league}/standings`.
+- Soccer standings use `/apis/v2/sports/soccer/{league}/standings` and may append `?season=YYYY` for historical seasons.
+- Standings query keys must include both league slug and season.
+- Standings season lists use `/sports/soccer/leagues/{leagueSlug}/seasons?limit=20` and cache longer than standings data.
 - Sort standings rows by ESPN-provided `row.rank` ascending at mapper and render boundaries.
 - Display ESPN rank as-is; never replace it with `index + 1`.
 - Do not insert blank rows for missing ranks.
@@ -81,6 +83,7 @@ Suggested stale times:
 - Finished past matches: 10-30 minutes.
 - Teams and league metadata: 24 hours.
 - Standings: 5-15 minutes.
+- Standings season lists: 24 hours.
 - Teams, team detail, and roster: 24 hours.
 - Team schedule: 5-15 minutes.
 

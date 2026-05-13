@@ -13,6 +13,8 @@ Use these endpoint families:
 - Match summary: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/summary?event={eventId}`
 - Athlete season stats: Core athlete detail may expose `statistics.$ref`; follow that ref through the proxy before older `statistics`/`statisticslog`/`gamelog`/`splits` probes.
 - Standings: `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings`
+- Standings by season: `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings?season={YYYY}`
+- League seasons: `https://sports.core.api.espn.com/v2/sports/soccer/leagues/{league}/seasons?limit=20`
 - Soccer league catalog: `https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit=1000`
 - Team fixture schedule fallback: `https://site.web.api.espn.com/apis/site/v2/sports/soccer/all/teams/{teamId}/schedule?fixture=true`
 
@@ -27,6 +29,7 @@ Use these endpoint families:
 - Team fixture schedule fallback may return per-event `event.league` instead of `event.leagues`; treat `event.league.slug` as canonical before any source endpoint fallback.
 - Event links can expose canonical league slugs through `leagueAbbrev` or `/league/{slug}` URLs and may be used when structured event league fields are missing.
 - Standings for soccer should use `/apis/v2/`, not `/apis/site/v2/`.
+- Standings season selection should use the ESPN season start year, for example `2024` for `2024-25`.
 - Team detail should prefer Site API `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams/{teamId}`.
 - Core team venue data can be wrong for soccer clubs; use Core team detail only as a fallback and do not let it override Site API venue or a home `nextEvent` venue.
 - If team detail has no reliable venue, Team detail may infer the stadium from the team's non-neutral home schedule matches instead of making a separate venue-only request.

@@ -72,7 +72,34 @@ describe('LeagueFilter', () => {
 
     expect(wrapper.text()).toContain('England');
     expect(wrapper.text()).toContain('EPL');
+    expect(wrapper.text()).toContain('1 giải phù hợp');
     expect(wrapper.text()).not.toContain('La Liga');
+  });
+
+  it('uses a stable mobile dialog layout with an independently scrolling result list', async () => {
+    const wrapper = mountFilter();
+
+    await openPicker(wrapper);
+
+    const panelClasses = wrapper.find('[data-testid="league-picker-panel"]').classes().join(' ');
+    const resultsClasses = wrapper.find('[data-testid="league-picker-results"]').classes().join(' ');
+
+    expect(panelClasses).toContain('flex');
+    expect(panelClasses).toContain('h-[calc(100dvh-2rem)]');
+    expect(panelClasses).toContain('flex-col');
+    expect(resultsClasses).toContain('min-h-0');
+    expect(resultsClasses).toContain('flex-1');
+    expect(resultsClasses).toContain('overflow-y-auto');
+  });
+
+  it('shows the current number of matching leagues while searching', async () => {
+    const wrapper = mountFilter();
+
+    await openPicker(wrapper);
+    expect(wrapper.text()).toContain('10 giải phù hợp');
+
+    await wrapper.find('input[type="search"]').setValue('cup');
+    expect(wrapper.text()).toContain('3 giải phù hợp');
   });
 
   it('renders enriched detail short names for second-tier leagues', async () => {
@@ -171,6 +198,16 @@ describe('LeagueFilter', () => {
     await germanyHeader()?.trigger('click');
     await wrapper.find('input[type="search"]').setValue('bundesliga');
     expect(dialogText()).toContain('2. Bundesliga');
+  });
+
+  it('shows an empty state when search has no matches', async () => {
+    const wrapper = mountFilter();
+
+    await openPicker(wrapper);
+    await wrapper.find('input[type="search"]').setValue('zzzzzz');
+
+    expect(wrapper.text()).toContain('0 giải phù hợp');
+    expect(wrapper.text()).toContain('Không tìm thấy giải phù hợp.');
   });
 });
 
