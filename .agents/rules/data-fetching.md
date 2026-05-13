@@ -67,6 +67,12 @@
 
 ## Cache And Error Handling
 
+PWA/service worker cache rules:
+
+- Service workers may cache the app shell and hashed static assets.
+- Service workers must not cache `/api/espn/*` responses with long-lived stale behavior.
+- Livescore, fixtures, standings, team schedule, and match detail API freshness must remain controlled by TanStack Query and existing HTTP cache rules.
+
 Suggested stale times:
 
 - Live scoreboard with live matches: 15-30 seconds.

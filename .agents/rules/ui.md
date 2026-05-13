@@ -74,6 +74,12 @@ Suggested palette:
 
 Navigation should remain minimal: Fixtures/Results, Live, Standings, Teams.
 
+Install UI:
+
+- Do not add a navbar item for installing the app.
+- Show a compact `Cài app` action only when the browser can install the app or when iOS needs an Add to Home Screen hint.
+- Keep install prompts contextual, dismissible, and secondary to match browsing.
+
 ## Accessibility
 
 - Use semantic buttons, links, headings, lists, and tables.

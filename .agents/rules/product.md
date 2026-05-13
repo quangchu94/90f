@@ -9,6 +9,7 @@ Primary user goals:
 - Quickly see today's matches, upcoming fixtures, and recent results.
 - Filter by league, result/fixture mode, expandable date range, match status, and favorite competitions.
 - Use favorite competitions as the user-facing league selector source across fixtures, livescore, standings, and teams.
+- Install 90f.com from supported desktop and mobile browsers as a PWA without adding a main navbar item.
 - Open a match detail view with score, teams, time/status, venue, broadcast/meta, and summary data when available.
 - Match detail and team links from match detail should use the canonical ESPN league slug from summary data when ESPN provides one.
 - Match cards, team schedule rows, livescore rows, and match detail should use the canonical ESPN league slug when event-level metadata provides one.
@@ -93,3 +94,4 @@ Implementation rules:
 - The detail page remains fast and readable on mobile.
 - Unsupported or missing ESPN endpoints degrade gracefully.
 - User-facing empty/error/loading copy should say `Chúng tôi` or use neutral wording instead of exposing `ESPN`.
+- Browser install support must keep live data fresh; do not use PWA caching that can make livescore, fixtures, or match detail API data stale.
