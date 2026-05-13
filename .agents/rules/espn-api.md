@@ -11,6 +11,7 @@ Use these endpoint families:
 - All-soccer live scoreboard: `https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?dates={YYYYMMDD}&limit=200`
 - Teams: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams`
 - Match summary: `https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/summary?event={eventId}`
+- Athlete season stats: Core athlete detail may expose `statistics.$ref`; follow that ref through the proxy before older `statistics`/`statisticslog`/`gamelog`/`splits` probes.
 - Standings: `https://site.api.espn.com/apis/v2/sports/soccer/{league}/standings`
 - Soccer league catalog: `https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit=1000`
 - Team fixture schedule fallback: `https://site.web.api.espn.com/apis/site/v2/sports/soccer/all/teams/{teamId}/schedule?fixture=true`
@@ -56,6 +57,9 @@ Use these endpoint families:
 - League metadata may use static local inference for country, confederation, world, and misc/friendly classification.
 - Match stage labels, penalty shootout scores, and goal type metadata are not stable across ESPN endpoints; parse them defensively from structured competitor fields, notes, season/stage fields, status detail text, and event/key-event text.
 - Knockout round labels in match summary can appear in `header.season.name/displayName`, for example `2025-26 English FA Cup, Final`, `Semifinals`, or `Quarterfinals`.
+- Soccer match team stats and player match stats may appear in `summary.boxscore.teams[].statistics` and `summary.boxscore.players[].statistics`; treat every field as optional.
+- Soccer match summaries often omit `boxscore.players` but include `summary.leaders[]`; use leaders as highlighted player stats, not full player boxscore.
+- Soccer athlete season stats endpoints are not reliable across all leagues; probe them defensively and treat 404 or empty stats as unsupported, not as a page failure.
 
 ## Reliability
 

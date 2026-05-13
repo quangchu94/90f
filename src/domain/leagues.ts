@@ -9,6 +9,7 @@ const CURATED_LEAGUE_NAMES: Record<string, { name: string; shortName?: string }>
   'ita.1': { name: 'Serie A', shortName: 'Serie A' },
   'ita.2': { name: 'Italian Serie B', shortName: 'Italian Serie B' },
   'fra.1': { name: 'Ligue 1', shortName: 'Ligue 1' },
+  'ksa.1': { name: 'Saudi Pro League', shortName: 'Saudi Pro League' },
   'usa.1': { name: 'MLS', shortName: 'MLS' },
   'uefa.europa.conf': { name: 'UEFA Conference League', shortName: 'UECL' },
   'concacaf.leagues.cup': { name: 'Leagues Cup', shortName: 'Leagues Cup' },
@@ -22,10 +23,11 @@ const COUNTRY_NAME_PREFIXES: Record<string, string> = {
   ger: 'German',
   ita: 'Italian',
   fra: 'French',
+  ksa: 'Saudi',
   usa: 'American'
 };
 
-const PRIORITY_LEAGUE_PREFIXES = new Set(['fifa', 'uefa', 'concacaf', 'eng', 'ger', 'esp', 'ita', 'fra', 'usa']);
+const PRIORITY_LEAGUE_PREFIXES = new Set(['fifa', 'uefa', 'concacaf', 'eng', 'ger', 'esp', 'ita', 'fra', 'ksa', 'usa']);
 
 export const INITIAL_LEAGUES: LeagueSummary[] = [
   enrichLeagueMetadata({ slug: 'fifa.world', name: 'FIFA World Cup', shortName: 'World Cup' }),
@@ -68,6 +70,8 @@ export function getSupportedLeagueFallback(slug: string | undefined): string {
       return 'ita.1';
     case 'fra':
       return 'fra.1';
+    case 'ksa':
+      return 'ksa.1';
     case 'uefa':
       return 'uefa.champions';
     case 'fifa':
@@ -376,6 +380,8 @@ function getCountryMetadata(slug: string): { label: string; code: string; confed
       return { label: 'Italy', code: 'ITA', confederation: 'UEFA' };
     case 'fra':
       return { label: 'France', code: 'FRA', confederation: 'UEFA' };
+    case 'ksa':
+      return { label: 'Saudi Arabia', code: 'KSA', confederation: 'AFC' };
     case 'usa':
       return { label: 'United States', code: 'USA', confederation: 'CONCACAF' };
     default:

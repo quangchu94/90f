@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   espnHttpClient,
+  fetchPlayerSeasonStats,
   fetchSoccerLeagueDetail,
   fetchSoccerLeagueDetailsForPicker,
   fetchSoccerLeagues,
@@ -163,6 +164,66 @@ describe('espn client', () => {
     );
     expect(espnHttpClient.getJson).toHaveBeenCalledWith(
       '/api/espn/core/sports/soccer/leagues/usa.1?lang=en&region=us',
+      undefined
+    );
+  });
+
+  it('fetches player season stats through the athlete statistics ref first', async () => {
+    const getJsonSpy = vi.spyOn(espnHttpClient, 'getJson').mockImplementation((url: string) => {
+      if (url === '/api/espn/core/sports/soccer/leagues/esp.1/athletes/207288') {
+        return Promise.resolve({
+          id: '207288',
+          displayName: 'Ante Budimir',
+          statistics: {
+            $ref: 'http://sports.core.api.espn.com/v2/sports/soccer/leagues/esp.1/seasons/2025/types/1/athletes/207288/statistics?lang=en&region=us'
+          }
+        });
+      }
+
+      if (url.includes('/seasons/2025/types/1/athletes/207288/statistics')) {
+        return Promise.resolve({ splits: { categories: [{ displayName: 'Offensive', stats: [] }] } });
+      }
+
+      return Promise.reject(new Error('unexpected url'));
+    });
+
+    const stats = await fetchPlayerSeasonStats('esp.1', '207288');
+
+    expect(stats).toEqual({ splits: { categories: [{ displayName: 'Offensive', stats: [] }] } });
+    expect(getJsonSpy).toHaveBeenNthCalledWith(
+      1,
+      '/api/espn/core/sports/soccer/leagues/esp.1/athletes/207288',
+      undefined
+    );
+    expect(getJsonSpy).toHaveBeenNthCalledWith(
+      2,
+      '/api/espn/core/sports/soccer/leagues/esp.1/seasons/2025/types/1/athletes/207288/statistics?lang=en&region=us',
+      undefined
+    );
+  });
+
+  it('falls back to older player stats probes when athlete detail has no statistics ref', async () => {
+    const getJsonSpy = vi.spyOn(espnHttpClient, 'getJson').mockImplementation((url: string) => {
+      if (url === '/api/espn/core/sports/soccer/leagues/eng.1/athletes/196176') {
+        return Promise.resolve({ id: '196176', displayName: 'David Raya' });
+      }
+
+      if (url.includes('/athletes/196176/statistics')) {
+        return Promise.resolve({ stats: [{ name: 'appearances', displayValue: '30' }] });
+      }
+
+      return Promise.reject(new Error('unexpected url'));
+    });
+
+    await expect(fetchPlayerSeasonStats('eng.1', '196176')).resolves.toEqual({
+      stats: [{ name: 'appearances', displayValue: '30' }]
+    });
+    expect(getJsonSpy).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.1/athletes/196176',
+      undefined
+    );
+    expect(getJsonSpy).toHaveBeenCalledWith(
+      '/api/espn/core/sports/soccer/leagues/eng.1/athletes/196176/statistics',
       undefined
     );
   });

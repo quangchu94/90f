@@ -66,7 +66,44 @@
         </div>
       </div>
 
-      <section class="rounded border border-app-border bg-app-surface p-4">
+      <section class="flex rounded border border-app-border bg-app-surface p-1" aria-label="Match detail tabs">
+        <button
+          v-for="tab in detailTabs"
+          :key="tab.value"
+          type="button"
+          :class="detailTabClass(tab.value)"
+          @click="activeTab = tab.value"
+        >
+          {{ tab.label }}
+        </button>
+      </section>
+
+      <div v-if="activeTab === 'overview'" class="grid gap-3 sm:grid-cols-2">
+        <section class="rounded border border-app-border bg-app-surface p-4">
+          <h2 class="text-base font-bold">Thông tin trận</h2>
+          <dl class="mt-3 space-y-3 text-sm">
+            <div class="flex justify-between gap-3">
+              <dt class="text-app-secondary">Thời gian</dt>
+              <dd class="text-right font-semibold">{{ timeLabel }}</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt class="text-app-secondary">Sân vận động</dt>
+              <dd class="text-right font-semibold">{{ match.venue ?? 'Chưa có dữ liệu' }}</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt class="text-app-secondary">Khán giả</dt>
+              <dd class="text-right font-semibold">{{ attendanceLabel }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="rounded border border-app-border bg-app-surface p-4">
+          <h2 class="text-base font-bold">Phát sóng</h2>
+          <p class="mt-3 text-sm text-app-secondary">{{ broadcastLabel }}</p>
+        </section>
+      </div>
+
+      <section v-else-if="activeTab === 'timeline'" class="rounded border border-app-border bg-app-surface p-4">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-base font-bold">Diễn biến chính</h2>
           <span class="text-xs font-semibold text-app-muted">
@@ -107,39 +144,73 @@
         <p v-else class="mt-3 text-sm text-app-secondary">Chưa có sự kiện trận đấu.</p>
       </section>
 
-      <div class="grid gap-3 sm:grid-cols-2">
-        <section class="rounded border border-app-border bg-app-surface p-4">
-          <h2 class="text-base font-bold">Thông tin trận</h2>
-          <dl class="mt-3 space-y-3 text-sm">
-            <div class="flex justify-between gap-3">
-              <dt class="text-app-secondary">Thời gian</dt>
-              <dd class="text-right font-semibold">{{ timeLabel }}</dd>
-            </div>
-            <div class="flex justify-between gap-3">
-              <dt class="text-app-secondary">Sân vận động</dt>
-              <dd class="text-right font-semibold">{{ match.venue ?? 'Chưa có dữ liệu' }}</dd>
-            </div>
-            <div class="flex justify-between gap-3">
-              <dt class="text-app-secondary">Khán giả</dt>
-              <dd class="text-right font-semibold">{{ attendanceLabel }}</dd>
-            </div>
-          </dl>
-        </section>
+      <section v-else-if="activeTab === 'team-stats'" class="rounded border border-app-border bg-app-surface p-4">
+        <h2 class="text-base font-bold">Thống kê đội</h2>
+        <div v-if="teamStatRows.length" class="mt-4 space-y-3" data-testid="team-match-stats">
+          <div class="grid grid-cols-[minmax(0,1fr)_minmax(8rem,11rem)_minmax(0,1fr)] gap-3 text-xs font-bold text-app-secondary sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)_minmax(0,1fr)]">
+            <span class="truncate">{{ match.homeTeam.shortName }}</span>
+            <span class="text-center">Chỉ số</span>
+            <span class="truncate text-right">{{ match.awayTeam.shortName }}</span>
+          </div>
+          <div
+            v-for="row in teamStatRows"
+            :key="row.key"
+            class="grid grid-cols-[minmax(0,1fr)_minmax(8rem,11rem)_minmax(0,1fr)] items-center gap-3 rounded border border-app-border bg-app-elevated px-3 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)_minmax(0,1fr)]"
+          >
+            <span class="font-black">{{ row.home }}</span>
+            <span class="break-words text-center text-xs font-semibold leading-snug text-app-secondary">{{ row.label }}</span>
+            <span class="text-right font-black">{{ row.away }}</span>
+          </div>
+        </div>
+        <p v-else class="mt-3 text-sm text-app-secondary">Chúng tôi chưa có thống kê đội cho trận này.</p>
+      </section>
 
-        <section class="rounded border border-app-border bg-app-surface p-4">
-          <h2 class="text-base font-bold">Phát sóng</h2>
-          <p class="mt-3 text-sm text-app-secondary">{{ broadcastLabel }}</p>
-        </section>
-      </div>
+      <section v-else class="rounded border border-app-border bg-app-surface p-4">
+        <h2 class="text-base font-bold">{{ playerStatsTitle }}</h2>
+        <div v-if="match.playerStats.length" class="mt-4 space-y-4" data-testid="player-match-stats">
+          <article v-for="group in match.playerStats" :key="`${group.team.id}-${group.category}`" class="space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="truncate text-sm font-bold text-app-secondary">{{ group.team.shortName }} · {{ group.category }}</h3>
+              <span class="text-xs font-semibold text-app-muted">{{ group.players.length }} cầu thủ</span>
+            </div>
+            <div class="overflow-x-auto rounded border border-app-border">
+              <table class="min-w-full divide-y divide-app-border text-sm">
+                <thead class="bg-app-elevated text-xs text-app-secondary">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Cầu thủ</th>
+                    <th v-for="label in compactPlayerLabels(group.labels)" :key="label" class="min-w-24 whitespace-normal px-3 py-2 text-right leading-snug">
+                      {{ label }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-app-border">
+                  <tr v-for="row in group.players" :key="row.player.id">
+                    <td class="max-w-40 truncate px-3 py-2 font-semibold">{{ row.player.displayName }}</td>
+                    <td
+                      v-for="stat in compactPlayerStats(row.stats)"
+                      :key="stat.key"
+                      class="px-3 py-2 text-right font-bold"
+                    >
+                      {{ formatStatDisplayValue(stat) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        <p v-else class="mt-3 text-sm text-app-secondary">Chúng tôi chưa có thống kê cầu thủ cho trận này.</p>
+      </section>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, toRefs, watch } from 'vue';
+import { computed, ref, toRefs, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { MatchEvent, MatchEventType } from '@/domain/models';
+import type { MatchEvent, MatchEventType, PlayerMatchStatGroup, StatSummary } from '@/domain/models';
 import { getLeagueShortName } from '@/domain/leagues';
+import { formatStatDisplayValue } from '@/domain/stats';
 import { useMatchSummary } from '@/composables/useMatchSummary';
 import { formatKickoffDateTime } from '@/utils/date';
 import StatusBadge from '@/components/football/StatusBadge.vue';
@@ -151,11 +222,20 @@ const props = defineProps<{
   eventId: string;
 }>();
 
+type DetailTab = 'overview' | 'timeline' | 'team-stats' | 'player-stats';
+
 const { leagueSlug, eventId } = toRefs(props);
 const route = useRoute();
 const router = useRouter();
 const { data: match, isLoading, isError, refetch } = useMatchSummary(leagueSlug, eventId);
 const backTarget = computed(() => getSafeReturnTo(route.query.returnTo));
+const activeTab = ref<DetailTab>('timeline');
+const detailTabs: Array<{ value: DetailTab; label: string }> = [
+  { value: 'timeline', label: 'Diễn biến' },
+  { value: 'team-stats', label: 'Thống kê' },
+  { value: 'player-stats', label: 'Cầu thủ' },
+  { value: 'overview', label: 'Thông tin Khác' }
+];
 
 const timeLabel = computed(() => {
   if (!match.value?.kickoff) {
@@ -174,7 +254,7 @@ const broadcastLabel = computed(() =>
 );
 const leagueLabel = computed(() =>
   match.value
-    ? match.value.leagueShortName ?? getLeagueShortName(match.value.leagueSlug, undefined, match.value.leagueName)
+    ? getMatchLeagueLabel(match.value.leagueSlug, match.value.leagueName, match.value.leagueShortName)
     : ''
 );
 const homeTeamRoute = computed(() => ({
@@ -191,6 +271,33 @@ const awayTeamRoute = computed(() => ({
     teamId: match.value?.awayTeam.id ?? ''
   }
 }));
+const teamStatRows = computed(() => {
+  const stats = match.value?.teamStats ?? [];
+  const home = stats.find((entry) => entry.team.id === match.value?.homeTeam.id) ?? stats[0];
+  const away = stats.find((entry) => entry.team.id === match.value?.awayTeam.id) ?? stats[1];
+
+  if (!home || !away) {
+    return [];
+  }
+
+  const awayByKey = new Map(away.stats.map((stat) => [stat.key, stat]));
+  return home.stats.flatMap((homeStat) => {
+    const awayStat = awayByKey.get(homeStat.key);
+    return awayStat
+      ? [{
+          key: homeStat.key,
+          label: homeStat.label,
+          home: formatStatDisplayValue(homeStat),
+          away: formatStatDisplayValue(awayStat)
+        }]
+      : [];
+  });
+});
+const playerStatsTitle = computed(() =>
+  match.value?.playerStats.some((group) => group.source === 'leaders')
+    ? 'Cầu thủ nổi bật'
+    : 'Thống kê cầu thủ theo trận'
+);
 
 watch(
   () => match.value?.leagueSlug,
@@ -242,6 +349,41 @@ function eventPlayerLabel(event: MatchEvent): string {
   }
 
   return event.playerName;
+}
+
+function detailTabClass(tab: DetailTab): string {
+  const base = 'h-10 flex-1 rounded px-2 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-app-accent';
+  return tab === activeTab.value
+    ? `${base} bg-app-accent text-white`
+    : `${base} text-app-secondary hover:text-app-text`;
+}
+
+function compactPlayerLabels(labels: PlayerMatchStatGroup['labels']): string[] {
+  return labels.slice(0, 6);
+}
+
+function compactPlayerStats(stats: StatSummary[]): StatSummary[] {
+  return stats.slice(0, 6);
+}
+
+function getMatchLeagueLabel(slug: string, leagueName: string, leagueShortName?: string): string {
+  if (isClearLeagueName(leagueName, slug)) {
+    return leagueName;
+  }
+
+  if (isClearLeagueName(leagueShortName, slug)) {
+    return leagueShortName;
+  }
+
+  return getLeagueShortName(slug, undefined, leagueName);
+}
+
+function isClearLeagueName(leagueName: string | undefined, slug: string): leagueName is string {
+  if (!leagueName || leagueName === slug) {
+    return false;
+  }
+
+  return !/^[A-Z]{2,4}\s+\d+$/.test(leagueName.trim());
 }
 
 function handleRefetch(): void {

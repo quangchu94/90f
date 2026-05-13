@@ -42,6 +42,26 @@ export function buildTeamRosterUrl(leagueSlug: string, teamId: string): string {
   return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams/${teamId}/roster`;
 }
 
+export function buildCoreAthleteStatisticsUrl(leagueSlug: string, athleteId: string): string {
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}/athletes/${athleteId}/statistics`;
+}
+
+export function buildCoreAthleteDetailUrl(leagueSlug: string, athleteId: string): string {
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}/athletes/${athleteId}`;
+}
+
+export function buildCoreAthleteStatisticsLogUrl(leagueSlug: string, athleteId: string): string {
+  return `${coreApiBaseUrl}/sports/soccer/leagues/${leagueSlug}/athletes/${athleteId}/statisticslog`;
+}
+
+export function buildSiteAthleteGamelogUrl(leagueSlug: string, athleteId: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/athletes/${athleteId}/gamelog`;
+}
+
+export function buildSiteAthleteSplitsUrl(leagueSlug: string, athleteId: string): string {
+  return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/athletes/${athleteId}/splits`;
+}
+
 export function buildTeamScheduleUrl(leagueSlug: string, teamId: string): string {
   return `${siteApiBaseUrl}/sports/soccer/${leagueSlug}/teams/${teamId}/schedule`;
 }

@@ -28,7 +28,7 @@
     <StateBlock
       v-else-if="!groups?.length"
       title="Chưa có bảng xếp hạng cho giải này."
-      message="ESPN chưa trả dữ liệu bảng xếp hạng cho giải đấu này."
+      message="Chúng tôi chưa có dữ liệu bảng xếp hạng cho giải đấu này."
     />
 
     <section v-else class="space-y-5">

@@ -79,6 +79,10 @@ const teamScheduleMock = vi.hoisted(() => ({
   isError: false
 }));
 
+const rosterMock = vi.hoisted(() => ({
+  players: [] as Array<Record<string, unknown>>
+}));
+
 const routeLeagueMock = vi.hoisted(() => ({
   redirectSlugs: new Set<string>(),
   fallbackBySlug: new Map<string, string>([['esp.copa_del_rey', 'esp.1']]),
@@ -121,7 +125,7 @@ vi.mock('@/composables/useTeamDetail', () => ({
 
 vi.mock('@/composables/useTeamRoster', () => ({
   useTeamRoster: () => ({
-    data: computed(() => []),
+    data: computed(() => rosterMock.players),
     isLoading: computed(() => false),
     isError: computed(() => false),
     refetch: vi.fn()
@@ -216,6 +220,7 @@ describe('TeamDetailPage', () => {
     teamScheduleMock.isLoading = false;
     teamScheduleMock.isFetching = false;
     teamScheduleMock.isError = false;
+    rosterMock.players = [];
     routeLeagueMock.redirectSlugs.clear();
   });
 
@@ -429,6 +434,34 @@ describe('TeamDetailPage', () => {
       name: 'team-detail',
       params: { leagueSlug: 'esp.1', teamId: '83' },
       query: {}
+    });
+  });
+
+  it('links roster players to hidden season stats page', () => {
+    rosterMock.players = [
+      {
+        id: '7',
+        name: 'Bukayo Saka',
+        displayName: 'Bukayo Saka',
+        jersey: '7',
+        position: 'Forward'
+      }
+    ];
+
+    const wrapper = mount(TeamDetailPage, {
+      props: { leagueSlug: 'eng.1', teamId: '359' },
+      global: {
+        stubs: {
+          RouterLink: RouterLinkStub
+        }
+      }
+    });
+    const link = wrapper.find('[data-testid="player-season-stats-link"]');
+
+    expect(link.attributes('aria-label')).toBe('Xem thống kê mùa giải của Bukayo Saka');
+    expect(link.findComponent(RouterLinkStub).props('to')).toMatchObject({
+      name: 'player-season-stats',
+      params: { leagueSlug: 'eng.1', teamId: '359', playerId: '7' }
     });
   });
 });

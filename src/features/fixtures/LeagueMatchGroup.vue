@@ -14,7 +14,7 @@
     <StateBlock
       v-else-if="isError && !matchesForDisplay.length"
       title="Không thể tải dữ liệu"
-      message="Có thể ESPN đang chặn CORS hoặc tạm thời quá tải. Dữ liệu cũ sẽ được giữ lại khi có thể."
+      message="Có thể chúng tôi đang gặp lỗi kết nối hoặc tạm thời quá tải. Dữ liệu cũ sẽ được giữ lại khi có thể."
       action-label="Thử lại"
       @action="refetchAll"
     />

@@ -45,6 +45,12 @@ export const router = createRouter({
       name: 'team-detail',
       component: () => import('@/features/teams/TeamDetailPage.vue'),
       props: true
+    },
+    {
+      path: '/team/:leagueSlug/:teamId/player/:playerId',
+      name: 'player-season-stats',
+      component: () => import('@/features/teams/PlayerSeasonStatsPage.vue'),
+      props: true
     }
   ],
   scrollBehavior() {

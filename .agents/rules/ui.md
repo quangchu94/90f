@@ -41,7 +41,9 @@ Suggested palette:
 - Buttons and filters must have visible active, hover, focus, loading, and disabled states.
 - Text must not overflow buttons, cards, tabs, or match rows.
 - Use icons where helpful for calendar, trophy, search, chevron, star/favorite, refresh, and status.
-- Match detail timeline appears directly below the score header.
+- Match detail uses internal segmented tabs in this order: timeline, team stats, player match stats, then `Thông tin Khác`; do not add new navbar items for Phase 4 stats.
+- Match detail stat tables should stay compact on mobile, keep stat-name columns readable/responsive, and show concise empty states when data is unavailable.
+- Team Detail roster players may deep-link to hidden player season stats pages.
 - Team schedule empty states must not appear while schedule requests are still fetching; show a loading/updating message until requests settle.
 
 ## Routes
@@ -54,12 +56,14 @@ Suggested palette:
 - `/standings/:leagueSlug` league standings.
 - `/teams/:leagueSlug` team list.
 - `/team/:leagueSlug/:teamId` team detail.
+- `/team/:leagueSlug/:teamId/player/:playerId` hidden player season stats route opened from Team Detail roster only.
 - Match detail should replace mismatched route league slugs with ESPN's canonical summary league slug without showing an extra warning.
 - Team and standings routes must not show raw unsupported slugs as league names; unsupported route leagues should replace to a supported fallback in the same country/confederation when possible.
 - League display labels should use curated or humanized names when ESPN catalog only provides a slug.
 - League labels must not show rough slug-derived names like `German 1` when a curated or common name is known; use labels such as `Bundesliga`.
 - League labels must keep meaningful suffixes after a country prefix, for example `German 2. Bundesliga` should display as `2. Bundesliga`, not `2.`.
-- User-visible league labels should use the normalized `shortName` first, with normalized full `name` only as a fallback when `shortName` is missing.
+- Match detail league labels should prefer a clear full competition name, such as `Saudi Pro League`, over short fallback labels such as `KSA 1`.
+- User-visible picker/card league labels should use the normalized `shortName` first, with normalized full `name` only as a fallback when `shortName` is missing.
 - Standings and Teams selectors should list favorite leagues, while preserving valid deep-link route leagues even when the route league is not currently a favorite.
 - League picker groups should be collapsible by country/continent/world; search results should auto-expand matching groups.
 - League picker should prefer enriched ESPN detail `shortName` labels such as `EFL Championship` and `Italian Serie B` over slug-derived fallbacks like `English 2` or `Italian 2`.
@@ -84,6 +88,8 @@ Navigation should remain minimal: Fixtures/Results, Live, Standings, Teams.
 ## Localization
 
 Default visible copy should be Vietnamese.
+
+User-facing copy must not expose the provider name `ESPN`; use `Chúng tôi` or neutral wording in loading, empty, and error states.
 
 Preferred terms:
 

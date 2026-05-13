@@ -46,7 +46,7 @@ Rules:
 
 ## Domain Models
 
-Use small, stable app models such as `MatchStatus`, `TeamSummary`, `LeagueSummary`, `FootballMatch`, `TeamDetail`, and `MatchDetail`.
+Use small, stable app models such as `MatchStatus`, `TeamSummary`, `LeagueSummary`, `FootballMatch`, `TeamDetail`, `MatchDetail`, and normalized stat summaries.
 
 Mapping rules:
 

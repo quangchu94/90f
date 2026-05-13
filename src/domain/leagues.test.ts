@@ -90,6 +90,14 @@ describe('league metadata', () => {
       countryCode: 'USA',
       confederation: 'CONCACAF'
     });
+    expect(enrichLeagueMetadata({ slug: 'ksa.1', name: 'KSA 1' })).toMatchObject({
+      name: 'Saudi Pro League',
+      shortName: 'Saudi Pro League',
+      groupLabel: 'Saudi Arabia',
+      groupType: 'country',
+      countryCode: 'KSA',
+      confederation: 'AFC'
+    });
     expect(enrichLeagueMetadata({ slug: 'eng.2', name: 'English Championship' })).toMatchObject({
       name: 'English League Championship',
       shortName: 'EFL Championship'

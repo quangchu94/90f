@@ -6,7 +6,7 @@
         <div>
           <h1 class="text-2xl font-black tracking-normal sm:text-3xl">Trận đấu đang diễn ra</h1>
           <p class="mt-1 text-sm text-app-secondary">
-            Theo dõi tỷ số trực tiếp từ ESPN, tự làm mới khi có trận live.
+            Theo dõi tỷ số trực tiếp, tự làm mới khi có trận live.
           </p>
         </div>
 
@@ -51,7 +51,7 @@
     <StateBlock
       v-else-if="isError && !liveMatches.length"
       title="Không thể tải livescore"
-      message="Có thể ESPN đang quá tải hoặc proxy tạm thời lỗi. Hãy thử lại sau."
+      message="Có thể chúng tôi đang quá tải hoặc proxy tạm thời lỗi. Hãy thử lại sau."
       action-label="Thử lại"
       @action="handleRefetch"
     />
@@ -85,7 +85,7 @@
     <StateBlock
       v-else
       title="Hiện chưa có trận đang diễn ra"
-      message="Livescore sẽ tự cập nhật khi ESPN trả về trận đang đá trong ngày."
+      message="Livescore sẽ tự cập nhật khi chúng tôi có trận đang đá trong ngày."
     />
   </div>
 </template>

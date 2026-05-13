@@ -4,10 +4,15 @@ import type {
   MatchEvent,
   MatchEventType,
   MatchStatus,
+  PlayerMatchStatGroup,
+  PlayerMatchStatRow,
+  PlayerSeasonStats,
   PlayerSummary,
+  StatSummary,
   StandingGroup,
   StandingRow,
   TeamDetail,
+  TeamMatchStats,
   TeamScheduleMatch,
   TeamSummary
 } from '@/domain/models';
@@ -19,7 +24,10 @@ import type {
   EspnEvent,
   EspnEventStatus,
   EspnAthlete,
+  EspnGenericStat,
   EspnMatchEvent,
+  EspnPlayerStatCategory,
+  EspnPlayerStatsResponse,
   EspnRosterGroup,
   EspnRosterResponse,
   EspnScoreboardResponse,
@@ -104,7 +112,20 @@ export function mapSummaryResponse(
     notes: [],
     events,
     goals: events.filter((event) => event.type === 'goal'),
-    redCards: events.filter((event) => event.type === 'red_card')
+    redCards: events.filter((event) => event.type === 'red_card'),
+    teamStats: mapTeamMatchStats(response),
+    playerStats: mapPlayerMatchStats(response)
+  };
+}
+
+export function mapPlayerSeasonStatsResponse(
+  response: EspnPlayerStatsResponse,
+  playerId: string
+): PlayerSeasonStats {
+  return {
+    playerId,
+    season: findSeasonLabel(response),
+    groups: mapSeasonStatGroups(response)
   };
 }
 
@@ -500,6 +521,290 @@ function mapAthlete(athlete: EspnAthlete, fallbackPosition?: string): PlayerSumm
     nationality: athlete.citizenship ?? athlete.birthPlace?.country,
     headshotUrl: athlete.headshot?.href ?? athlete.headshots?.[0]?.href ?? athlete.images?.[0]?.href
   };
+}
+
+function mapTeamMatchStats(response: EspnSummaryResponse): TeamMatchStats[] {
+  return (response.boxscore?.teams ?? [])
+    .map((entry, index) => ({
+      team: mapTeamFromEspnTeam(entry.team, `Doi ${index + 1}`),
+      stats: mapGenericStats(entry.statistics ?? [])
+    }))
+    .filter((entry) => entry.stats.length > 0);
+}
+
+function mapPlayerMatchStats(response: EspnSummaryResponse): PlayerMatchStatGroup[] {
+  const boxscoreStats = (response.boxscore?.players ?? []).flatMap((teamEntry, teamIndex) => {
+    const team = mapTeamFromEspnTeam(teamEntry.team, `Doi ${teamIndex + 1}`);
+
+    return (teamEntry.statistics ?? []).flatMap((category) => {
+      const labels = getPlayerCategoryLabels(category);
+      const players = (category.athletes ?? [])
+        .map((athleteEntry) => ({
+          player: mapAthlete(athleteEntry.athlete ?? {}, category.displayName ?? category.name),
+          stats: mapPlayerStatValues(category, athleteEntry.stats ?? [])
+        }))
+        .filter((entry) => entry.stats.length > 0);
+
+      if (!players.length) {
+        return [];
+      }
+
+      return [{ team, category: category.displayName ?? category.name ?? 'Thong ke', source: 'boxscore' as const, labels, players }];
+    });
+  });
+
+  return boxscoreStats.length ? boxscoreStats : mapLeaderMatchStats(response);
+}
+
+function mapLeaderMatchStats(response: EspnSummaryResponse): PlayerMatchStatGroup[] {
+  return (response.leaders ?? []).flatMap((teamEntry, teamIndex) => {
+    const team = mapTeamFromEspnTeam(teamEntry.team, `Doi ${teamIndex + 1}`);
+    const playersById = new Map<string, PlayerMatchStatRow>();
+    const labelByKey = new Map<string, string>();
+
+    for (const category of teamEntry.leaders ?? []) {
+      const statKey = normalizeStatName(category.name ?? category.displayName ?? category.shortDisplayName ?? 'leader');
+      const statLabel = category.displayName ?? category.shortDisplayName ?? category.name ?? humanizeStatLabel(statKey);
+      labelByKey.set(statKey, statLabel);
+
+      for (const leader of category.leaders ?? []) {
+        const athlete = leader.athlete ?? {};
+        const player = mapAthlete(athlete);
+        const existing = playersById.get(player.id) ?? { player, stats: [] };
+        const displayValue = readLeaderDisplayValue(leader, statKey);
+
+        if (!displayValue) {
+          continue;
+        }
+
+        existing.stats = [
+          ...existing.stats.filter((stat) => stat.key !== statKey),
+          {
+            key: statKey,
+            label: statLabel,
+            displayValue,
+            value: parseStatNumber(displayValue)
+          }
+        ];
+        playersById.set(player.id, existing);
+      }
+    }
+
+    const players = [...playersById.values()].filter((player) => player.stats.length > 0);
+    if (!players.length) {
+      return [];
+    }
+
+    return [{
+      team,
+      category: 'Cau thu noi bat',
+      source: 'leaders' as const,
+      labels: [...labelByKey.values()],
+      players
+    }];
+  });
+}
+
+function mapGenericStats(stats: EspnGenericStat[]): StatSummary[] {
+  return stats.flatMap((stat, index) => {
+    const displayValue = getStatDisplayValue(stat);
+    const label =
+      stat.displayName ??
+      stat.label ??
+      stat.shortDisplayName ??
+      stat.name ??
+      stat.abbreviation ??
+      `Stat ${index + 1}`;
+
+    if (!displayValue) {
+      return [];
+    }
+
+    return [{
+      key: normalizeStatName(stat.name ?? stat.type ?? stat.abbreviation ?? label),
+      label,
+      abbreviation: stat.abbreviation ?? stat.shortDisplayName,
+      value: typeof stat.value === 'number' && Number.isFinite(stat.value) ? stat.value : undefined,
+      displayValue
+    }];
+  });
+}
+
+function getStatDisplayValue(stat: EspnGenericStat): string | undefined {
+  if (stat.displayValue !== undefined && stat.displayValue !== '') {
+    return stat.displayValue;
+  }
+
+  if (stat.summary !== undefined && stat.summary !== '') {
+    return stat.summary;
+  }
+
+  if (typeof stat.value === 'number' && Number.isFinite(stat.value)) {
+    return `${stat.value}`;
+  }
+
+  if (typeof stat.value === 'string' && stat.value !== '') {
+    return stat.value;
+  }
+
+  return undefined;
+}
+
+function getPlayerCategoryLabels(category: EspnPlayerStatCategory): string[] {
+  const labels = category.labels?.length
+    ? category.labels
+    : category.keys?.map((key) => humanizeStatLabel(key)) ?? [];
+
+  return labels.filter((label) => label && normalizeStatName(label) !== 'name');
+}
+
+function mapPlayerStatValues(category: EspnPlayerStatCategory, values: Array<string | number>): StatSummary[] {
+  const keys = category.keys?.length ? category.keys : category.labels ?? [];
+  const labels = getPlayerCategoryLabels(category);
+
+  return values.flatMap((value, index) => {
+    const key = keys[index] ?? labels[index] ?? `stat-${index + 1}`;
+
+    if (normalizeStatName(key) === 'name') {
+      return [];
+    }
+
+    return [{
+      key: normalizeStatName(key),
+      label: labels[index] ?? humanizeStatLabel(key),
+      displayValue: `${value}`,
+      value: typeof value === 'number' && Number.isFinite(value) ? value : undefined
+    }];
+  });
+}
+
+function readLeaderDisplayValue(
+  leader: NonNullable<NonNullable<NonNullable<EspnSummaryResponse['leaders']>[number]['leaders']>[number]['leaders']>[number],
+  statKey: string
+): string | undefined {
+  const statistics = Array.isArray(leader.statistics)
+    ? leader.statistics
+    : leader.statistics
+      ? [leader.statistics]
+      : [];
+  const matchingStat = statistics.find((stat) => normalizeStatName(stat.name ?? stat.displayName ?? '') === statKey);
+
+  return (
+    getStatDisplayValue(matchingStat ?? {}) ??
+    readString(leader.mainStat?.value) ??
+    leader.displayValue ??
+    leader.summary
+  );
+}
+
+function parseStatNumber(value: string): number | undefined {
+  const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function mapSeasonStatGroups(response: EspnPlayerStatsResponse): PlayerSeasonStats['groups'] {
+  return collectSeasonStatGroups(response)
+    .map((group, index) => ({
+      name: group.name ?? `Thong ke ${index + 1}`,
+      stats: mapGenericStats(group.stats)
+    }))
+    .filter((group) => group.stats.length > 0);
+}
+
+function collectSeasonStatGroups(response: unknown): Array<{ name?: string; stats: EspnGenericStat[] }> {
+  const value = asRecord(response);
+  if (!value) {
+    return [];
+  }
+
+  const directStats = asGenericStats(value.stats ?? value.statistics);
+  const splitRecord = asRecord(value.splits);
+  const splits = asArray(value.splits);
+  const categories = asArray(value.categories);
+  const splitCategories = asArray(splitRecord?.categories);
+
+  const groups: Array<{ name?: string; stats: EspnGenericStat[] } | undefined> = [
+    directStats.length ? { name: readString(value.displayName) ?? readString(value.name), stats: directStats } : undefined,
+    ...splitCategories.flatMap((category) => {
+      const categoryRecord = asRecord(category);
+      const stats = asGenericStats(categoryRecord?.stats ?? categoryRecord?.statistics);
+      return stats.length ? [{ name: readString(categoryRecord?.displayName) ?? readString(categoryRecord?.name), stats }] : [];
+    }),
+    ...splits.flatMap((split) => {
+      const splitRecord = asRecord(split);
+      const stats = asGenericStats(splitRecord?.stats ?? splitRecord?.statistics);
+      return stats.length ? [{ name: readString(splitRecord?.displayName) ?? readString(splitRecord?.name), stats }] : [];
+    }),
+    ...categories.flatMap((category) => {
+      const categoryRecord = asRecord(category);
+      const stats = asGenericStats(categoryRecord?.stats ?? categoryRecord?.statistics);
+      return stats.length ? [{ name: readString(categoryRecord?.displayName) ?? readString(categoryRecord?.name), stats }] : [];
+    })
+  ];
+
+  return groups.filter((group): group is { name?: string; stats: EspnGenericStat[] } => Boolean(group));
+}
+
+function findSeasonLabel(response: unknown): string | undefined {
+  const value = asRecord(response);
+  const season = asRecord(value?.season);
+  return readString(season?.displayName) ?? readString(season?.year) ?? readString(value?.seasonDisplayName);
+}
+
+function asGenericStats(value: unknown): EspnGenericStat[] {
+  return asArray(value)
+    .map(asRecord)
+    .filter((stat): stat is Record<string, unknown> => Boolean(stat))
+    .map((stat) => ({
+      name: readString(stat.name),
+      displayName: readString(stat.displayName),
+      shortDisplayName: readString(stat.shortDisplayName),
+      label: readString(stat.label),
+      abbreviation: readString(stat.abbreviation),
+      type: readString(stat.type),
+      value: readNumberOrString(stat.value),
+      displayValue: readString(stat.displayValue),
+      summary: readString(stat.summary)
+    }));
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : undefined;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function readString(value: unknown): string | undefined {
+  if (typeof value === 'string' && value !== '') {
+    return value;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return `${value}`;
+  }
+
+  return undefined;
+}
+
+function readNumberOrString(value: unknown): number | string | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value !== '') {
+    return value;
+  }
+
+  return undefined;
+}
+
+function humanizeStatLabel(value: string): string {
+  return value
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function normalizeStatus(status: EspnEventStatus | undefined, hasCompleteScore = false): MatchStatus {

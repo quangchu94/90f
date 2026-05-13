@@ -65,6 +65,41 @@ export interface PlayerSummary {
   headshotUrl?: string;
 }
 
+export interface StatSummary {
+  key: string;
+  label: string;
+  abbreviation?: string;
+  value?: number;
+  displayValue: string;
+}
+
+export interface TeamMatchStats {
+  team: TeamSummary;
+  stats: StatSummary[];
+}
+
+export interface PlayerMatchStatRow {
+  player: PlayerSummary;
+  stats: StatSummary[];
+}
+
+export interface PlayerMatchStatGroup {
+  team: TeamSummary;
+  category: string;
+  source: 'boxscore' | 'leaders';
+  labels: string[];
+  players: PlayerMatchStatRow[];
+}
+
+export interface PlayerSeasonStats {
+  playerId: string;
+  season?: string;
+  groups: Array<{
+    name: string;
+    stats: StatSummary[];
+  }>;
+}
+
 export interface TeamScheduleMatch extends FootballMatch {}
 
 export type MatchEventType = 'goal' | 'red_card';
@@ -109,4 +144,6 @@ export interface MatchDetail extends FootballMatch {
   events: MatchEvent[];
   goals: MatchEvent[];
   redCards: MatchEvent[];
+  teamStats: TeamMatchStats[];
+  playerStats: PlayerMatchStatGroup[];
 }

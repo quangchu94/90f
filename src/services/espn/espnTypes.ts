@@ -183,7 +183,16 @@ export interface EspnSummaryResponse {
       displayName?: string;
     };
   };
-  boxscore?: unknown;
+  boxscore?: {
+    teams?: Array<{
+      team?: EspnTeam;
+      statistics?: EspnGenericStat[];
+    }>;
+    players?: Array<{
+      team?: EspnTeam;
+      statistics?: EspnPlayerStatCategory[];
+    }>;
+  };
   gameInfo?: {
     venue?: {
       fullName?: string;
@@ -193,8 +202,59 @@ export interface EspnSummaryResponse {
   broadcasts?: Array<{
     names?: string[];
   }>;
+  leaders?: Array<{
+    team?: EspnTeam;
+    leaders?: Array<{
+      name?: string;
+      displayName?: string;
+      shortDisplayName?: string;
+      leaders?: Array<{
+        displayValue?: string;
+        athlete?: EspnAthlete;
+        statistics?: EspnGenericStat[] | EspnGenericStat;
+        mainStat?: {
+          value?: string | number;
+          label?: string;
+        };
+        summary?: string;
+      }>;
+    }>;
+  }>;
   keyEvents?: EspnMatchEvent[];
   commentary?: EspnCommentaryItem[];
+}
+
+export interface EspnGenericStat {
+  name?: string;
+  displayName?: string;
+  shortDisplayName?: string;
+  label?: string;
+  abbreviation?: string;
+  type?: string;
+  value?: number | string;
+  displayValue?: string;
+  summary?: string;
+}
+
+export interface EspnPlayerStatCategory {
+  name?: string;
+  displayName?: string;
+  shortDisplayName?: string;
+  labels?: string[];
+  descriptions?: string[];
+  keys?: string[];
+  athletes?: Array<{
+    athlete?: EspnAthlete;
+    stats?: Array<string | number>;
+  }>;
+}
+
+export type EspnPlayerStatsResponse = unknown;
+
+export interface EspnAthleteDetailResponse extends EspnAthlete {
+  statistics?: {
+    $ref?: string;
+  };
 }
 
 export interface EspnStandingStat {

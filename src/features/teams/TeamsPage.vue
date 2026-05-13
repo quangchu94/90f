@@ -28,7 +28,7 @@
     <StateBlock
       v-else-if="!teams?.length"
       title="Chưa có danh sách đội cho giải này."
-      message="ESPN chưa trả dữ liệu đội bóng cho giải đấu này."
+      message="Chúng tôi chưa có dữ liệu đội bóng cho giải đấu này."
     />
 
     <section v-else class="space-y-4">

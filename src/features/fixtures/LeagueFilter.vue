@@ -24,7 +24,7 @@
       class="fixed inset-0 z-50 flex items-end bg-black/60 p-3 sm:items-center sm:justify-center"
       role="dialog"
       aria-modal="true"
-      aria-label="Chọn giải đấu ESPN"
+      aria-label="Chọn giải đấu"
       @click.self="closePicker"
     >
       <div class="max-h-[82vh] w-full max-w-xl overflow-hidden rounded border border-app-border bg-app-surface shadow-xl">
@@ -56,7 +56,7 @@
           </div>
 
           <div v-else-if="isError" class="p-4 text-sm text-app-danger">
-            Không thể tải danh sách giải từ ESPN. Hãy thử lại sau.
+            Không thể tải danh sách giải từ chúng tôi. Hãy thử lại sau.
           </div>
 
           <div v-else-if="!filteredLeagues.length" class="p-4 text-sm text-app-secondary">

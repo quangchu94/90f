@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   mapRosterResponse,
+  mapPlayerSeasonStatsResponse,
   mapScoreboardResponse,
   mapStandingsResponse,
   mapSummaryResponse,
@@ -217,6 +218,77 @@ describe('espn mappers', () => {
     expect(detail.status).toBe('scheduled');
     expect(detail.kickoff).toBe('2026-05-08T19:00Z');
     expect(detail.events).toEqual([]);
+  });
+
+  it('maps team match statistics from summary boxscore', () => {
+    const detail = mapSummaryResponse(makeSummaryWithBoxscore(), 'eng.1', '401');
+
+    expect(detail.teamStats).toHaveLength(2);
+    expect(detail.teamStats[0]).toMatchObject({
+      team: { id: '1', name: 'Arsenal' },
+      stats: expect.arrayContaining([{ key: 'possessionpct', label: 'Possession %', displayValue: '61%' }])
+    });
+    expect(detail.teamStats[1].stats[0].displayValue).toBe('39%');
+  });
+
+  it('maps player match statistics from summary boxscore', () => {
+    const detail = mapSummaryResponse(makeSummaryWithBoxscore(), 'eng.1', '401');
+
+    expect(detail.playerStats[0]).toMatchObject({
+      team: { id: '1', name: 'Arsenal' },
+      category: 'Outfield',
+      source: 'boxscore',
+      labels: ['Shots', 'Goals']
+    });
+    expect(detail.playerStats[0].players[0]).toMatchObject({
+      player: { id: '7', displayName: 'Bukayo Saka' },
+      stats: [
+        { key: 'shots', displayValue: '3' },
+        { key: 'goals', displayValue: '1' }
+      ]
+    });
+  });
+
+  it('falls back to summary leaders when player boxscore stats are missing', () => {
+    const detail = mapSummaryResponse(makeSummaryWithLeaders(), 'esp.1', '748480');
+
+    expect(detail.playerStats[0]).toMatchObject({
+      team: { id: '97', name: 'Osasuna' },
+      category: 'Cau thu noi bat',
+      source: 'leaders',
+      labels: ['Total Shots', 'Accurate Passes']
+    });
+    expect(detail.playerStats[0].players).toEqual([
+      expect.objectContaining({
+        player: expect.objectContaining({ id: '207288', displayName: 'Ante Budimir' }),
+        stats: [
+          expect.objectContaining({ key: 'totalshots', displayValue: '3' }),
+          expect.objectContaining({ key: 'accuratepasses', displayValue: '21' })
+        ]
+      })
+    ]);
+  });
+
+  it('maps player season statistics from split categories', () => {
+    const stats = mapPlayerSeasonStatsResponse(makePlayerSeasonStatsResponse(), '207288');
+
+    expect(stats.season).toBe('2025');
+    expect(stats.groups).toEqual([
+      expect.objectContaining({
+        name: 'Offensive',
+        stats: [
+          expect.objectContaining({ key: 'totalgoals', label: 'Goals', displayValue: '12' }),
+          expect.objectContaining({ key: 'totalassists', label: 'Assists', displayValue: '3' })
+        ]
+      })
+    ]);
+  });
+
+  it('keeps match stats empty when summary boxscore is missing', () => {
+    const detail = mapSummaryResponse(makeScheduledSummary(), 'esp.1', '748491');
+
+    expect(detail.teamStats).toEqual([]);
+    expect(detail.playerStats).toEqual([]);
   });
 
   it('maps standings rows with common soccer stats', () => {
@@ -749,6 +821,103 @@ function makeSummaryWithGoalQualifiers(): EspnSummaryResponse {
         text: 'Raphinha scores from a free kick.'
       }
     ]
+  };
+}
+
+function makeSummaryWithBoxscore(): EspnSummaryResponse {
+  return {
+    ...makeScheduledSummary(),
+    boxscore: {
+      teams: [
+        {
+          team: { id: '1', displayName: 'Arsenal', shortDisplayName: 'Arsenal' },
+          statistics: [
+            { name: 'possessionPct', displayName: 'Possession %', displayValue: '61%' },
+            { name: 'shotsOnTarget', displayName: 'Shots on Target', value: 8 }
+          ]
+        },
+        {
+          team: { id: '2', displayName: 'Chelsea', shortDisplayName: 'Chelsea' },
+          statistics: [
+            { name: 'possessionPct', displayName: 'Possession %', displayValue: '39%' },
+            { name: 'shotsOnTarget', displayName: 'Shots on Target', value: 4 }
+          ]
+        }
+      ],
+      players: [
+        {
+          team: { id: '1', displayName: 'Arsenal', shortDisplayName: 'Arsenal' },
+          statistics: [
+            {
+              name: 'outfield',
+              displayName: 'Outfield',
+              labels: ['Shots', 'Goals'],
+              keys: ['shots', 'goals'],
+              athletes: [
+                {
+                  athlete: { id: '7', displayName: 'Bukayo Saka' },
+                  stats: [3, 1]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  };
+}
+
+function makeSummaryWithLeaders(): EspnSummaryResponse {
+  return {
+    ...makeScheduledSummary(),
+    leaders: [
+      {
+        team: { id: '97', displayName: 'Osasuna', shortDisplayName: 'Osasuna' },
+        leaders: [
+          {
+            name: 'totalShots',
+            displayName: 'Total Shots',
+            leaders: [
+              {
+                displayValue: '3',
+                athlete: { id: '207288', displayName: 'Ante Budimir' },
+                statistics: [
+                  { name: 'totalShots', displayName: 'Shots', displayValue: '3' }
+                ]
+              }
+            ]
+          },
+          {
+            name: 'accuratePasses',
+            displayName: 'Accurate Passes',
+            leaders: [
+              {
+                athlete: { id: '207288', displayName: 'Ante Budimir' },
+                mainStat: { value: '21', label: 'Passes' }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function makePlayerSeasonStatsResponse() {
+  return {
+    season: { displayName: '2025' },
+    splits: {
+      categories: [
+        {
+          name: 'offensive',
+          displayName: 'Offensive',
+          stats: [
+            { name: 'totalGoals', displayName: 'Goals', displayValue: '12' },
+            { name: 'totalAssists', displayName: 'Assists', value: 3 }
+          ]
+        }
+      ]
+    }
   };
 }
 

@@ -78,7 +78,11 @@ Implementation rules:
 - Match statistics where ESPN provides data.
 - Timeline/play-by-play for goals, cards, substitutions, and major events.
 - Timeline goal labels use `(P)` after the scorer for penalty goals and `(F)` for free-kick goals.
-- Player statistics where ESPN soccer endpoints support them.
+- Match stats and player stats for a single match live inside match detail tabs; do not add a Phase 4 navbar item.
+- Match detail tab order is timeline, team stats, player match stats, then `Thông tin Khác`.
+- When ESPN omits full player boxscore, match detail may show `Cầu thủ nổi bật` from summary leaders instead of full player stat rows.
+- Player season stats open from Team Detail roster deep links, not from the main navigation.
+- Player statistics where ESPN soccer endpoints support them, with graceful empty states when endpoints are unsupported.
 - More complete match detail page.
 
 ## Done Criteria
@@ -88,3 +92,4 @@ Implementation rules:
 - ESPN data is mapped into normalized domain models.
 - The detail page remains fast and readable on mobile.
 - Unsupported or missing ESPN endpoints degrade gracefully.
+- User-facing empty/error/loading copy should say `Chúng tôi` or use neutral wording instead of exposing `ESPN`.

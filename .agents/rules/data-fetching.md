@@ -51,6 +51,11 @@
 
 - Match summary must use ESPN `header.league.slug` as the canonical league slug when present, even if the route league slug differs.
 - If ESPN omits `header.league.slug`, match summary may fallback to the route league slug.
+- Match detail team stats and player match stats should be mapped from `summary.boxscore` when ESPN provides it; if soccer omits `boxscore.players`, map `summary.leaders` as highlighted player stats.
+- Percent-like stats from API responses should render as whole percentage values in UI, for example `0.72` should display as `72%`.
+- Player season stats use `['player-season-stats', leagueSlug, playerId]`, cache for 6-24 hours, and do not poll.
+- Player season stats should fetch Core athlete detail first and follow `statistics.$ref` through the ESPN proxy when present; older stats/gamelog/splits probes are fallback only.
+- Player season stats should render an unsupported empty state for 404, empty, or unstable schemas.
 
 ## Livescore
 

@@ -1,9 +1,14 @@
 import {
+  buildCoreAthleteDetailUrl,
+  buildCoreAthleteStatisticsLogUrl,
+  buildCoreAthleteStatisticsUrl,
   buildCoreTeamDetailUrl,
   buildLiveScoreboardUrl,
   buildMatchSummaryUrl,
   buildProxiedEspnRefUrl,
   buildScoreboardUrl,
+  buildSiteAthleteGamelogUrl,
+  buildSiteAthleteSplitsUrl,
   buildSoccerLeagueDetailUrl,
   buildSoccerLeaguesUrl,
   buildStandingsUrl,
@@ -22,8 +27,10 @@ import {
 } from '@/domain/leagues';
 import type { LeagueSummary } from '@/domain/models';
 import type {
+  EspnAthleteDetailResponse,
   EspnLeague,
   EspnLeagueCollectionResponse,
+  EspnPlayerStatsResponse,
   EspnRosterResponse,
   EspnScoreboardResponse,
   EspnStandingsResponse,
@@ -219,6 +226,47 @@ export async function fetchTeamRoster(
     buildTeamRosterUrl(leagueSlug, teamId),
     signal
   );
+}
+
+export async function fetchPlayerSeasonStats(
+  leagueSlug: string,
+  playerId: string,
+  signal?: AbortSignal
+): Promise<EspnPlayerStatsResponse> {
+  try {
+    const athlete = await espnHttpClient.getJson<EspnAthleteDetailResponse>(
+      buildCoreAthleteDetailUrl(leagueSlug, playerId),
+      signal
+    );
+    const statisticsRef = athlete.statistics?.$ref;
+
+    if (statisticsRef) {
+      return espnHttpClient.getJson<EspnPlayerStatsResponse>(
+        buildProxiedEspnRefUrl(statisticsRef),
+        signal
+      );
+    }
+  } catch {
+    // Fall through to older endpoint probes. ESPN soccer athlete detail/stat refs vary by league.
+  }
+
+  const fallbackUrls = [
+    buildCoreAthleteStatisticsUrl(leagueSlug, playerId),
+    buildCoreAthleteStatisticsLogUrl(leagueSlug, playerId),
+    buildSiteAthleteGamelogUrl(leagueSlug, playerId),
+    buildSiteAthleteSplitsUrl(leagueSlug, playerId)
+  ];
+  let firstError: unknown;
+
+  for (const url of fallbackUrls) {
+    try {
+      return await espnHttpClient.getJson<EspnPlayerStatsResponse>(url, signal);
+    } catch (error) {
+      firstError ??= error;
+    }
+  }
+
+  throw firstError ?? new EspnError('ESPN player statistics are unavailable', 404);
 }
 
 export async function fetchTeamSchedule(

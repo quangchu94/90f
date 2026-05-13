@@ -100,7 +100,7 @@
         <StateBlock
           v-else-if="!visibleSchedule.length"
           title="Chưa có lịch thi đấu cho đội này."
-          message="ESPN chưa trả dữ liệu lịch thi đấu."
+          message="Chúng tôi chưa có dữ liệu lịch thi đấu."
         />
         <div v-else class="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <MatchRow v-for="match in visibleSchedule" :key="match.id" :match="match" show-date show-league />
@@ -130,16 +130,19 @@
         <StateBlock
           v-else-if="!roster?.length"
           title="Chưa có dữ liệu đội hình."
-          message="ESPN chưa trả roster cho đội này."
+          message="Chúng tôi chưa có đội hình cho đội này."
         />
         <div v-else class="space-y-4">
           <article v-for="group in rosterGroups" :key="group.position" class="space-y-3">
             <h3 class="text-sm font-bold text-app-secondary">{{ group.position }}</h3>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div
+              <RouterLink
                 v-for="player in group.players"
                 :key="player.id"
-                class="flex min-h-20 items-center gap-3 rounded border border-app-border bg-app-surface p-3"
+                :to="playerStatsRoute(player.id)"
+                :aria-label="`Xem thống kê mùa giải của ${player.displayName}`"
+                class="flex min-h-20 items-center gap-3 rounded border border-app-border bg-app-surface p-3 transition hover:border-app-accent hover:text-app-amber focus:outline-none focus:ring-2 focus:ring-app-accent"
+                data-testid="player-season-stats-link"
               >
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-app-border bg-app-elevated">
                   <img
@@ -157,7 +160,7 @@
                     {{ [player.jersey ? `#${player.jersey}` : undefined, player.nationality].filter(Boolean).join(' · ') || 'Cầu thủ' }}
                   </p>
                 </div>
-              </div>
+              </RouterLink>
             </div>
           </article>
         </div>
@@ -339,6 +342,17 @@ function playerInitials(name: string): string {
     .map((part) => part[0])
     .join('')
     .toUpperCase();
+}
+
+function playerStatsRoute(playerId: string) {
+  return {
+    name: 'player-season-stats',
+    params: {
+      leagueSlug: effectiveLeagueSlug.value,
+      teamId: props.teamId,
+      playerId
+    }
+  };
 }
 
 function getKickoffDistance(kickoff: string): number {
