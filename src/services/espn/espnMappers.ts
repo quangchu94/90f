@@ -998,6 +998,10 @@ function getGoalQualifier(event: EspnMatchEvent): MatchEvent['goalQualifier'] {
     event.shortText
   ]);
 
+  if (/\b(own goal|own-goal|owngoal)\b/.test(text)) {
+    return 'own_goal';
+  }
+
   if (/\b(free kick|freekick|free-kick)\b/.test(text)) {
     return 'free_kick';
   }

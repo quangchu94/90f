@@ -203,11 +203,12 @@ describe('espn mappers', () => {
     expect(match.importanceLabel).toBe('Chung kết');
   });
 
-  it('marks penalty and free-kick goals in match events', () => {
+  it('marks penalty, own-goal, and free-kick goals in match events', () => {
     const detail = mapSummaryResponse(makeSummaryWithGoalQualifiers(), 'esp.1', '748480');
 
     expect(detail.goals.map((goal) => [goal.playerName, goal.goalQualifier])).toEqual([
       ['Robert Lewandowski', 'penalty'],
+      ['Jules Kounde', 'own_goal'],
       ['Raphinha', 'free_kick']
     ]);
   });
@@ -810,6 +811,15 @@ function makeSummaryWithGoalQualifiers(): EspnSummaryResponse {
         team: { id: '83', displayName: 'Barcelona' },
         participants: [{ athlete: { id: '125824', displayName: 'Robert Lewandowski' } }],
         text: 'Robert Lewandowski converts the penalty.'
+      },
+      {
+        id: 'goal-own-goal',
+        type: { type: 'goal---own-goal', text: 'Own Goal' },
+        scoringPlay: true,
+        clock: { value: 1800, displayValue: "30'" },
+        team: { id: '86', displayName: 'Real Madrid' },
+        participants: [{ athlete: { id: '675', displayName: 'Jules Kounde' } }],
+        text: 'Jules Kounde own goal.'
       },
       {
         id: 'goal-free-kick',

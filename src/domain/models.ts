@@ -107,7 +107,7 @@ export type MatchEventType = 'goal' | 'red_card';
 export interface MatchEvent {
   id: string;
   type: MatchEventType;
-  goalQualifier?: 'penalty' | 'free_kick';
+  goalQualifier?: 'penalty' | 'own_goal' | 'free_kick';
   teamId?: string;
   teamName?: string;
   playerName: string;

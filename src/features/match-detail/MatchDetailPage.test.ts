@@ -67,6 +67,16 @@ const matchMock = vi.hoisted(() => ({
         text: 'Goal'
       },
       {
+        id: 'own-goal',
+        type: 'goal',
+        teamId: '97',
+        teamName: 'Osasuna',
+        playerName: 'Jules Kounde',
+        goalQualifier: 'own_goal',
+        displayMinute: "55'",
+        text: 'Own Goal'
+      },
+      {
         id: 'away-goal',
         type: 'goal',
         teamId: '83',
@@ -155,7 +165,8 @@ describe('MatchDetailPage', () => {
 
     expect(rows[0].find('[data-testid="home-event"]').text()).toContain('Ante Budimir (P)');
     expect(rows[0].find('[data-testid="event-badge"]').text()).toContain('Bàn thắng');
-    expect(rows[1].find('[data-testid="away-event"]').text()).toContain('Robert Lewandowski (F)');
+    expect(rows[1].find('[data-testid="home-event"]').text()).toContain('Jules Kounde (OG)');
+    expect(rows[2].find('[data-testid="away-event"]').text()).toContain('Robert Lewandowski (F)');
   });
 
   it('renders important match tag and penalty shootout score', () => {

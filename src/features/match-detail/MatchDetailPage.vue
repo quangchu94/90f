@@ -344,6 +344,10 @@ function eventPlayerLabel(event: MatchEvent): string {
     return `${event.playerName} (P)`;
   }
 
+  if (event.goalQualifier === 'own_goal') {
+    return `${event.playerName} (OG)`;
+  }
+
   if (event.goalQualifier === 'free_kick') {
     return `${event.playerName} (F)`;
   }

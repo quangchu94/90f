@@ -78,7 +78,8 @@ Implementation rules:
 
 - Match statistics where ESPN provides data.
 - Timeline/play-by-play for goals, cards, substitutions, and major events.
-- Timeline goal labels use `(P)` after the scorer for penalty goals and `(F)` for free-kick goals.
+- Timeline goal labels use `(P)` after the scorer for penalty goals, `(OG)` for own goals, and `(F)` for free-kick goals.
+- Own goals must show `(OG)` immediately after the player name when ESPN provides enough structured data or safely recognizable text.
 - Match stats and player stats for a single match live inside match detail tabs; do not add a Phase 4 navbar item.
 - Match detail tab order is timeline, team stats, player match stats, then `Thông tin Khác`.
 - When ESPN omits full player boxscore, match detail may show `Cầu thủ nổi bật` from summary leaders instead of full player stat rows.
