@@ -18,6 +18,8 @@ When changing risky ESPN data logic:
 - Test score parsing from strings, numbers, and nested ESPN score shapes.
 - Test dedupe and merge preference rules.
 - Test partial failures and 404s.
+- When changing match detail player stats, test sparse leader rows so values align under the correct `Total Shots`, `Accurate Passes`, `Saves`, or similar columns.
+- When adding match detail lineup behavior, test both roster mapping and commentary-based substitution parsing.
 
 ## Development Standards
 

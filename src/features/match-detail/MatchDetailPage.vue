@@ -187,11 +187,11 @@
                   <tr v-for="row in group.players" :key="row.player.id">
                     <td class="max-w-40 truncate px-3 py-2 font-semibold">{{ row.player.displayName }}</td>
                     <td
-                      v-for="stat in compactPlayerStats(row.stats)"
-                      :key="stat.key"
+                      v-for="label in compactPlayerLabels(group.labels)"
+                      :key="label"
                       class="px-3 py-2 text-right font-bold"
                     >
-                      {{ formatStatDisplayValue(stat) }}
+                      {{ playerStatDisplay(row.stats, label) }}
                     </td>
                   </tr>
                 </tbody>
@@ -200,6 +200,61 @@
           </article>
         </div>
         <p v-else class="mt-3 text-sm text-app-secondary">Chúng tôi chưa có thống kê cầu thủ cho trận này.</p>
+        <div v-if="lineups.length" class="mt-5 space-y-3" data-testid="match-lineups">
+          <h2 class="text-base font-bold">Đội hình & thay người</h2>
+          <div class="grid gap-3 lg:grid-cols-2">
+            <article v-for="lineup in lineups" :key="lineup.team.id" class="rounded border border-app-border bg-app-elevated p-3">
+              <h3 class="truncate text-sm font-black">{{ lineup.team.shortName }}</h3>
+
+              <div class="mt-3">
+                <h4 class="text-xs font-bold uppercase tracking-wide text-app-muted">Đội hình xuất phát</h4>
+                <ol class="mt-2 grid gap-2 sm:grid-cols-2">
+                  <li
+                    v-for="player in lineup.starters"
+                    :key="player.player.id"
+                    class="flex min-w-0 items-center gap-2 rounded border border-app-border bg-app-surface px-2 py-2 text-sm"
+                  >
+                    <span class="w-7 shrink-0 text-xs font-black text-app-amber">{{ playerNumber(player) }}</span>
+                    <span class="min-w-0 flex-1 truncate font-semibold">{{ player.player.displayName }}</span>
+                    <span class="shrink-0 text-xs font-semibold text-app-muted">{{ player.position }}</span>
+                    <span v-if="player.subbedOut" class="shrink-0 text-xs font-black text-app-danger">Ra</span>
+                  </li>
+                </ol>
+              </div>
+
+              <div v-if="lineup.substitutes.length" class="mt-4">
+                <h4 class="text-xs font-bold uppercase tracking-wide text-app-muted">Vào sân từ ghế dự bị</h4>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span
+                    v-for="player in lineup.substitutes"
+                    :key="player.player.id"
+                    class="inline-flex max-w-full items-center gap-1 rounded border border-app-border bg-app-surface px-2 py-1 text-xs font-semibold"
+                  >
+                    <span class="text-app-amber">{{ playerNumber(player) }}</span>
+                    <span class="truncate">{{ player.player.displayName }}</span>
+                    <span v-if="player.subbedIn" class="text-app-live">Vào</span>
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="lineup.substitutions.length" class="mt-4">
+                <h4 class="text-xs font-bold uppercase tracking-wide text-app-muted">Thay người</h4>
+                <ul class="mt-2 space-y-2 text-sm">
+                  <li
+                    v-for="substitution in lineup.substitutions"
+                    :key="`${substitution.displayMinute}-${substitution.playerIn}-${substitution.playerOut}`"
+                    class="rounded border border-app-border bg-app-surface px-2 py-2"
+                  >
+                    <span class="font-black text-app-amber">{{ substitution.displayMinute || '-' }}</span>
+                    <span class="ml-2 font-semibold text-app-live">{{ substitution.playerIn }}</span>
+                    <span class="mx-1 text-app-muted">thay</span>
+                    <span class="font-semibold text-app-secondary">{{ substitution.playerOut }}</span>
+                  </li>
+                </ul>
+              </div>
+            </article>
+          </div>
+        </div>
       </section>
     </section>
   </div>
@@ -208,7 +263,7 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { MatchEvent, MatchEventType, PlayerMatchStatGroup, StatSummary } from '@/domain/models';
+import type { MatchEvent, MatchEventType, MatchLineupPlayer, PlayerMatchStatGroup, StatSummary } from '@/domain/models';
 import { getLeagueShortName } from '@/domain/leagues';
 import { formatStatDisplayValue } from '@/domain/stats';
 import { useMatchSummary } from '@/composables/useMatchSummary';
@@ -298,6 +353,7 @@ const playerStatsTitle = computed(() =>
     ? 'Cầu thủ nổi bật'
     : 'Thống kê cầu thủ theo trận'
 );
+const lineups = computed(() => match.value?.lineups ?? []);
 
 watch(
   () => match.value?.leagueSlug,
@@ -366,8 +422,21 @@ function compactPlayerLabels(labels: PlayerMatchStatGroup['labels']): string[] {
   return labels.slice(0, 6);
 }
 
-function compactPlayerStats(stats: StatSummary[]): StatSummary[] {
-  return stats.slice(0, 6);
+function playerStatDisplay(stats: StatSummary[], label: string): string {
+  const normalizedLabel = normalizeStatName(label);
+  const stat = stats.find((item) =>
+    normalizeStatName(item.label) === normalizedLabel || item.key === normalizedLabel
+  );
+
+  return stat ? formatStatDisplayValue(stat) : '-';
+}
+
+function playerNumber(player: MatchLineupPlayer): string {
+  return player.jersey ?? player.player.jersey ?? '-';
+}
+
+function normalizeStatName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function getMatchLeagueLabel(slug: string, leagueName: string, leagueShortName?: string): string {

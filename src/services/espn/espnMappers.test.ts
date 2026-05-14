@@ -257,7 +257,7 @@ describe('espn mappers', () => {
       team: { id: '97', name: 'Osasuna' },
       category: 'Cau thu noi bat',
       source: 'leaders',
-      labels: ['Total Shots', 'Accurate Passes']
+      labels: ['Total Shots', 'Accurate Passes', 'Saves']
     });
     expect(detail.playerStats[0].players).toEqual([
       expect.objectContaining({
@@ -266,8 +266,45 @@ describe('espn mappers', () => {
           expect.objectContaining({ key: 'totalshots', displayValue: '3' }),
           expect.objectContaining({ key: 'accuratepasses', displayValue: '21' })
         ]
+      }),
+      expect.objectContaining({
+        player: expect.objectContaining({ id: '191360', displayName: 'Sergio Herrera' }),
+        stats: [
+          expect.objectContaining({ key: 'saves', displayValue: '5' })
+        ]
       })
     ]);
+  });
+
+  it('maps match lineups and substitutions from summary rosters and commentary', () => {
+    const detail = mapSummaryResponse(makeSummaryWithLineups(), 'esp.1', '748480');
+
+    expect(detail.lineups[0]).toMatchObject({
+      team: { id: '97', name: 'Osasuna' },
+      starters: [
+        expect.objectContaining({
+          player: expect.objectContaining({ id: '207288', displayName: 'Ante Budimir' }),
+          starter: true,
+          subbedOut: true,
+          jersey: '17',
+          position: 'F'
+        })
+      ],
+      substitutes: [
+        expect.objectContaining({
+          player: expect.objectContaining({ id: '111', displayName: 'Raul Garcia' }),
+          starter: false,
+          subbedIn: true
+        })
+      ],
+      substitutions: [
+        expect.objectContaining({
+          displayMinute: "70'",
+          playerIn: 'Raul Garcia',
+          playerOut: 'Ante Budimir'
+        })
+      ]
+    });
   });
 
   it('maps player season statistics from split categories', () => {
@@ -906,8 +943,58 @@ function makeSummaryWithLeaders(): EspnSummaryResponse {
                 mainStat: { value: '21', label: 'Passes' }
               }
             ]
+          },
+          {
+            name: 'saves',
+            displayName: 'Saves',
+            leaders: [
+              {
+                athlete: { id: '191360', displayName: 'Sergio Herrera' },
+                statistics: [
+                  { name: 'saves', displayName: 'Saves', displayValue: '5' }
+                ],
+                mainStat: { value: '5', label: 'SV' }
+              }
+            ]
           }
         ]
+      }
+    ]
+  };
+}
+
+function makeSummaryWithLineups(): EspnSummaryResponse {
+  return {
+    ...makeScheduledSummary(),
+    rosters: [
+      {
+        team: { id: '97', displayName: 'Osasuna', shortDisplayName: 'Osasuna' },
+        roster: [
+          {
+            starter: true,
+            subbedIn: false,
+            subbedOut: true,
+            jersey: '17',
+            formationPlace: '9',
+            position: { abbreviation: 'F', displayName: 'Forward' },
+            athlete: { id: '207288', displayName: 'Ante Budimir' }
+          },
+          {
+            starter: false,
+            subbedIn: true,
+            subbedOut: false,
+            jersey: '9',
+            formationPlace: '0',
+            position: { abbreviation: 'SUB', displayName: 'Substitute' },
+            athlete: { id: '111', displayName: 'Raul Garcia' }
+          }
+        ]
+      }
+    ],
+    commentary: [
+      {
+        time: { value: 4172, displayValue: "70'" },
+        text: 'Substitution, Osasuna. Raul Garcia replaces Ante Budimir.'
       }
     ]
   };

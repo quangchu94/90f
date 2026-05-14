@@ -45,6 +45,8 @@ Suggested palette:
 - Use icons where helpful for calendar, trophy, search, chevron, star/favorite, refresh, and status.
 - Match detail uses internal segmented tabs in this order: timeline, team stats, player match stats, then `Thông tin Khác`; do not add new navbar items for Phase 4 stats.
 - Match detail stat tables should stay compact on mobile, keep stat-name columns readable/responsive, and show concise empty states when data is unavailable.
+- Match detail player-stat tables must render cells from the column label/key list, not directly from each player's sparse stat array, so leader fallback values do not shift into the wrong columns.
+- Match detail player tab may show compact `Đội hình & thay người` content from summary rosters/commentary below player stats; keep it optional when ESPN omits lineup data.
 - Team Detail roster players may deep-link to hidden player season stats pages.
 - Team schedule empty states must not appear while schedule requests are still fetching; show a loading/updating message until requests settle.
 

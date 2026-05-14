@@ -96,6 +96,31 @@ export interface PlayerMatchStatGroup {
   players: PlayerMatchStatRow[];
 }
 
+export interface MatchLineupPlayer {
+  player: PlayerSummary;
+  starter: boolean;
+  subbedIn: boolean;
+  subbedOut: boolean;
+  jersey?: string;
+  position?: string;
+  formationPlace?: string;
+}
+
+export interface MatchSubstitution {
+  team: TeamSummary;
+  minute?: number;
+  displayMinute: string;
+  playerIn: string;
+  playerOut: string;
+}
+
+export interface MatchLineupGroup {
+  team: TeamSummary;
+  starters: MatchLineupPlayer[];
+  substitutes: MatchLineupPlayer[];
+  substitutions: MatchSubstitution[];
+}
+
 export interface PlayerSeasonStats {
   playerId: string;
   season?: string;
@@ -151,4 +176,5 @@ export interface MatchDetail extends FootballMatch {
   redCards: MatchEvent[];
   teamStats: TeamMatchStats[];
   playerStats: PlayerMatchStatGroup[];
+  lineups: MatchLineupGroup[];
 }

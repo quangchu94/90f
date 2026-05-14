@@ -1,5 +1,8 @@
 import type {
   FootballMatch,
+  MatchLineupGroup,
+  MatchLineupPlayer,
+  MatchSubstitution,
   MatchDetail,
   MatchEvent,
   MatchEventType,
@@ -114,7 +117,8 @@ export function mapSummaryResponse(
     goals: events.filter((event) => event.type === 'goal'),
     redCards: events.filter((event) => event.type === 'red_card'),
     teamStats: mapTeamMatchStats(response),
-    playerStats: mapPlayerMatchStats(response)
+    playerStats: mapPlayerMatchStats(response),
+    lineups: mapMatchLineups(response)
   };
 }
 
@@ -554,6 +558,100 @@ function mapPlayerMatchStats(response: EspnSummaryResponse): PlayerMatchStatGrou
   });
 
   return boxscoreStats.length ? boxscoreStats : mapLeaderMatchStats(response);
+}
+
+function mapMatchLineups(response: EspnSummaryResponse): MatchLineupGroup[] {
+  const substitutions = mapMatchSubstitutions(response);
+
+  return (response.rosters ?? [])
+    .map((entry, index) => {
+      const team = mapTeamFromEspnTeam(entry.team, `Doi ${index + 1}`);
+      const players = (entry.roster ?? []).map(mapLineupPlayer);
+      const starters = players
+        .filter((player) => player.starter)
+        .sort(compareLineupPlayers);
+      const substitutes = players
+        .filter((player) => !player.starter)
+        .sort(compareLineupPlayers);
+
+      return {
+        team,
+        starters,
+        substitutes,
+        substitutions: substitutions.filter((substitution) => substitution.team.id === team.id)
+      };
+    })
+    .filter((group) => group.starters.length || group.substitutes.length || group.substitutions.length);
+}
+
+function mapLineupPlayer(
+  entry: NonNullable<NonNullable<EspnSummaryResponse['rosters']>[number]['roster']>[number]
+): MatchLineupPlayer {
+  const athlete = entry.athlete ?? {};
+  const position = entry.position ?? athlete.position;
+  const player = mapAthlete(
+    {
+      ...athlete,
+      jersey: entry.jersey ?? athlete.jersey,
+      position
+    },
+    position?.displayName ?? position?.name ?? position?.abbreviation
+  );
+
+  return {
+    player,
+    starter: entry.starter === true,
+    subbedIn: entry.subbedIn === true,
+    subbedOut: entry.subbedOut === true,
+    jersey: entry.jersey ?? player.jersey,
+    position: position?.abbreviation ?? position?.displayName ?? position?.name ?? player.position,
+    formationPlace: entry.formationPlace
+  };
+}
+
+function mapMatchSubstitutions(response: EspnSummaryResponse): MatchSubstitution[] {
+  const teamsByName = new Map<string, TeamSummary>();
+
+  for (const roster of response.rosters ?? []) {
+    const team = mapTeamFromEspnTeam(roster.team, roster.team?.displayName ?? 'Doi');
+    teamsByName.set(normalizeStatName(team.name), team);
+    teamsByName.set(normalizeStatName(team.shortName), team);
+  }
+
+  return (response.commentary ?? []).flatMap((item) => {
+    const text = item.text ?? '';
+    const substitutionMatch = text.match(/^Substitution,\s*([^.]+)\.\s*(.+?)\s+replaces\s+(.+?)\.?$/i);
+
+    if (!substitutionMatch) {
+      return [];
+    }
+
+    const [, teamName, playerIn, playerOut] = substitutionMatch;
+    const team = teamsByName.get(normalizeStatName(teamName)) ?? mapTeamFromEspnTeam(undefined, teamName);
+
+    return [{
+      team,
+      minute: item.time?.value,
+      displayMinute: item.time?.displayValue ?? '',
+      playerIn: playerIn.trim(),
+      playerOut: playerOut.trim()
+    }];
+  });
+}
+
+function compareLineupPlayers(left: MatchLineupPlayer, right: MatchLineupPlayer): number {
+  const subbedInCompare = Number(right.subbedIn) - Number(left.subbedIn);
+  if (subbedInCompare !== 0) {
+    return subbedInCompare;
+  }
+
+  const leftPlace = Number(left.formationPlace);
+  const rightPlace = Number(right.formationPlace);
+  if (Number.isFinite(leftPlace) && Number.isFinite(rightPlace) && leftPlace !== rightPlace) {
+    return leftPlace - rightPlace;
+  }
+
+  return left.player.displayName.localeCompare(right.player.displayName);
 }
 
 function mapLeaderMatchStats(response: EspnSummaryResponse): PlayerMatchStatGroup[] {

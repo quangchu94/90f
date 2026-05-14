@@ -55,6 +55,41 @@ const matchMock = vi.hoisted(() => ({
         ]
       }
     ],
+    lineups: [
+      {
+        team: { id: '97', name: 'Osasuna', shortName: 'Osasuna' },
+        starters: [
+          {
+            player: { id: '207288', name: 'Ante Budimir', displayName: 'Ante Budimir', jersey: '17' },
+            starter: true,
+            subbedIn: false,
+            subbedOut: true,
+            jersey: '17',
+            position: 'F',
+            formationPlace: '9'
+          }
+        ],
+        substitutes: [
+          {
+            player: { id: '111', name: 'Raul Garcia', displayName: 'Raul Garcia', jersey: '9' },
+            starter: false,
+            subbedIn: true,
+            subbedOut: false,
+            jersey: '9',
+            position: 'SUB',
+            formationPlace: '0'
+          }
+        ],
+        substitutions: [
+          {
+            team: { id: '97', name: 'Osasuna', shortName: 'Osasuna' },
+            displayMinute: "70'",
+            playerIn: 'Raul Garcia',
+            playerOut: 'Ante Budimir'
+          }
+        ]
+      }
+    ],
     events: [
       {
         id: 'home-goal',
@@ -143,7 +178,8 @@ describe('MatchDetailPage', () => {
             }
           ]
         }
-      ]
+      ],
+      lineups: matchMock.value.lineups
     };
   });
 
@@ -278,6 +314,54 @@ describe('MatchDetailPage', () => {
 
     expect(wrapper.text()).toContain('Cầu thủ nổi bật');
     expect(wrapper.text()).toContain('Total Shots');
+  });
+
+  it('aligns sparse highlighted player stats with their table columns', async () => {
+    matchMock.value = {
+      ...matchMock.value,
+      playerStats: [
+        {
+          team: { id: '83', name: 'Barcelona', shortName: 'Barcelona' },
+          category: 'Cau thu noi bat',
+          source: 'leaders',
+          labels: ['Total Shots', 'Accurate Passes', 'Saves'],
+          players: [
+            {
+              player: { id: '1', name: 'Shooter', displayName: 'Shooter' },
+              stats: [{ key: 'totalshots', label: 'Total Shots', displayValue: '4' }]
+            },
+            {
+              player: { id: '2', name: 'Passer', displayName: 'Passer' },
+              stats: [{ key: 'accuratepasses', label: 'Accurate Passes', displayValue: '30' }]
+            },
+            {
+              player: { id: '3', name: 'Keeper', displayName: 'Keeper' },
+              stats: [{ key: 'saves', label: 'Saves', displayValue: '5' }]
+            }
+          ]
+        }
+      ]
+    };
+    const wrapper = mountPage();
+
+    await wrapper.findAll('button')[2].trigger('click');
+    const rows = wrapper.find('[data-testid="player-match-stats"]').findAll('tbody tr');
+
+    expect(rows[0].findAll('td').map((cell) => cell.text())).toEqual(['Shooter', '4', '-', '-']);
+    expect(rows[1].findAll('td').map((cell) => cell.text())).toEqual(['Passer', '-', '30', '-']);
+    expect(rows[2].findAll('td').map((cell) => cell.text())).toEqual(['Keeper', '-', '-', '5']);
+  });
+
+  it('renders lineups and substitutions in the player tab', async () => {
+    const wrapper = mountPage();
+
+    await wrapper.findAll('button')[2].trigger('click');
+    const lineups = wrapper.find('[data-testid="match-lineups"]');
+
+    expect(lineups.text()).toContain('Đội hình');
+    expect(lineups.text()).toContain('Ante Budimir');
+    expect(lineups.text()).toContain('Raul Garcia');
+    expect(lineups.text()).toContain("70'");
   });
 
   it('renders empty stat states when data provider does not provide stats', async () => {

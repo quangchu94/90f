@@ -62,6 +62,9 @@ Use these endpoint families:
 - Knockout round labels in match summary can appear in `header.season.name/displayName`, for example `2025-26 English FA Cup, Final`, `Semifinals`, or `Quarterfinals`.
 - Soccer match team stats and player match stats may appear in `summary.boxscore.teams[].statistics` and `summary.boxscore.players[].statistics`; treat every field as optional.
 - Soccer match summaries often omit `boxscore.players` but include `summary.leaders[]`; use leaders as highlighted player stats, not full player boxscore.
+- Highlighted player leader rows are sparse by design. Keep leader stat keys such as `totalshots`, `accuratepasses`, and `saves`, and make UI tables align values by label/key instead of by array position.
+- Soccer match summaries may include `summary.rosters[]` with `starter`, `subbedIn`, `subbedOut`, `formationPlace`, and player position data; use it for compact lineups in match detail when available.
+- Soccer substitution pairs may be parsed from `summary.commentary[]` text shaped like `Substitution, Team. Player In replaces Player Out.`; parse defensively and keep the lineup section optional.
 - Soccer athlete season stats endpoints are not reliable across all leagues; probe them defensively and treat 404 or empty stats as unsupported, not as a page failure.
 
 ## Reliability

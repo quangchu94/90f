@@ -97,6 +97,7 @@ export interface EspnMatchEvent {
 
 export interface EspnCommentaryItem {
   sequence?: number;
+  type?: string;
   time?: {
     value?: number;
     displayValue?: string;
@@ -211,6 +212,24 @@ export interface EspnSummaryResponse {
   };
   broadcasts?: Array<{
     names?: string[];
+  }>;
+  rosters?: Array<{
+    team?: EspnTeam;
+    roster?: Array<{
+      active?: boolean;
+      starter?: boolean;
+      jersey?: string;
+      athlete?: EspnAthlete;
+      position?: {
+        name?: string;
+        displayName?: string;
+        abbreviation?: string;
+      };
+      subbedIn?: boolean;
+      subbedOut?: boolean;
+      formationPlace?: string;
+      stats?: EspnGenericStat[];
+    }>;
   }>;
   leaders?: Array<{
     team?: EspnTeam;
