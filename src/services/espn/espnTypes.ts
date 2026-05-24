@@ -151,6 +151,7 @@ export interface EspnEvent {
   season?: {
     name?: string;
     displayName?: string;
+    slug?: string;
   };
   seasonType?: {
     name?: string;

@@ -33,6 +33,7 @@ This file is the required quick-read index for the project. Detailed rules live 
 - Keep the all-fixture fallback endpoint for upcoming team matches, but never let it overwrite a concrete league with a generic or incorrect one.
 - League-specific team schedule events use the requested endpoint league as source metadata.
 - All-fixture team schedule events infer league from `event.season.displayName` or `event.seasonType.name`.
+- Livescore all-soccer events may omit league fields; infer concrete league slugs from season metadata or ESPN UID league ids before applying favorite/league filters.
 
 ## Fixtures And Favorites
 

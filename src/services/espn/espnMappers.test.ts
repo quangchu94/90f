@@ -43,6 +43,49 @@ describe('espn mappers', () => {
     expect(finished[0].awayScore).toBe(0);
   });
 
+  it('infers all-soccer event league from season slug when league fields are missing', () => {
+    const response = makeScoreboard('in', '0', '2');
+    response.leagues = [{ name: undefined, slug: undefined }];
+    response.events![0].season = { slug: '2025-26-english-premier-league' };
+
+    const matches = mapScoreboardResponse(response, 'all');
+
+    expect(matches[0]).toMatchObject({
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      leagueShortName: 'EPL'
+    });
+  });
+
+  it('infers all-soccer event league from ESPN uid league id when league fields are missing', () => {
+    const response = makeScoreboard('in', '0', '2');
+    response.leagues = [{ name: undefined, slug: undefined }];
+    response.events![0].uid = 's:600~l:700~e:740966';
+    delete response.events![0].season;
+
+    const matches = mapScoreboardResponse(response, 'all');
+
+    expect(matches[0]).toMatchObject({
+      leagueSlug: 'eng.1',
+      leagueName: 'Premier League',
+      leagueShortName: 'EPL'
+    });
+  });
+
+  it('falls back safely for all-soccer events without concrete league metadata', () => {
+    const response = makeScoreboard('in', '0', '2');
+    response.leagues = [{ name: undefined, slug: undefined }];
+    delete response.events![0].season;
+    delete response.events![0].uid;
+
+    const matches = mapScoreboardResponse(response, 'all');
+
+    expect(matches[0]).toMatchObject({
+      leagueSlug: 'all',
+      leagueName: 'all'
+    });
+  });
+
   it('handles missing logos and venue', () => {
     const response = makeScoreboard('pre');
     delete response.events?.[0]?.competitions?.[0]?.venue;
@@ -58,6 +101,17 @@ describe('espn mappers', () => {
     expect(normalizeStatus({ type: { id: '6', description: 'Postponed' } })).toBe('postponed');
     expect(normalizeStatus({ type: { state: 'mystery' } })).toBe('unknown');
     expect(normalizeStatus({ type: { state: 'mystery' } }, true)).toBe('finished');
+  });
+
+  it('normalizes first and second half soccer statuses as in progress', () => {
+    expect(normalizeStatus({ type: { state: 'in', name: 'STATUS_FIRST_HALF', detail: "24'" } })).toBe('in_progress');
+    expect(normalizeStatus({ type: { state: 'in', name: 'STATUS_SECOND_HALF', detail: "67'" } })).toBe('in_progress');
+  });
+
+  it('normalizes explicit halftime statuses as halftime', () => {
+    expect(normalizeStatus({ type: { state: 'in', name: 'STATUS_HALFTIME', description: 'Halftime' } })).toBe('halftime');
+    expect(normalizeStatus({ type: { state: 'in', detail: 'HT' } })).toBe('halftime');
+    expect(normalizeStatus({ type: { state: 'in', shortDetail: 'HT' } })).toBe('halftime');
   });
 
   it('maps summary goal and red-card key events', () => {

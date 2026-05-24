@@ -97,7 +97,7 @@ import StateBlock from '@/components/common/StateBlock.vue';
 import { getLeagueShortName } from '@/domain/leagues';
 import type { FootballMatch } from '@/domain/models';
 import { isLiveStatus } from '@/domain/status';
-import { useLiveScoreboard } from '@/composables/useLiveScoreboard';
+import { useLiveLeagueScoreboards, useLiveScoreboard } from '@/composables/useLiveScoreboard';
 import { useFixturesStore } from '@/stores/fixturesStore';
 import { getTodayInputDate } from '@/utils/date';
 
@@ -107,9 +107,26 @@ const fixturesStore = useFixturesStore();
 const selectedDate = ref(getTodayInputDate());
 const selectedFilter = ref<LiveFilter>('all');
 const updatedAt = ref<Date | null>(null);
-const { data, isLoading, isFetching, isError, refetch } = useLiveScoreboard(selectedDate);
+const { data, isLoading, isFetching: isBaseFetching, isError: isBaseError, refetch } = useLiveScoreboard(selectedDate);
 
 const favoriteLeagueSlugs = computed(() => new Set(fixturesStore.favoriteLeagues.map((league) => league.slug)));
+const unresolvedLiveMatches = computed(() =>
+  (data.value ?? []).filter((match) => isLiveStatus(match.status) && match.leagueSlug === 'all')
+);
+const supplementalLeagueSlugs = computed(() => {
+  if (selectedFilter.value === 'all' || !unresolvedLiveMatches.value.length) {
+    return [];
+  }
+
+  if (selectedFilter.value === 'favorites') {
+    return [...favoriteLeagueSlugs.value];
+  }
+
+  return [selectedFilter.value];
+});
+const supplementalScoreboards = useLiveLeagueScoreboards(selectedDate, supplementalLeagueSlugs);
+const isFetching = computed(() => isBaseFetching.value || supplementalScoreboards.isFetching.value);
+const isError = computed(() => isBaseError.value || supplementalScoreboards.isError.value);
 const filters = computed(() => [
   { value: 'all', label: 'Tất cả' },
   { value: 'favorites', label: 'Giải yêu thích' },
@@ -120,7 +137,7 @@ const filters = computed(() => [
 ]);
 
 const liveMatches = computed(() =>
-  (data.value ?? [])
+  dedupeMatchesById([...(data.value ?? []), ...supplementalScoreboards.matches.value])
     .filter((match) => isLiveStatus(match.status))
     .sort(sortLiveMatches)
 );
@@ -183,7 +200,49 @@ function sortLiveMatches(left: FootballMatch, right: FootballMatch): number {
   return left.leagueName.localeCompare(right.leagueName) || left.kickoff.localeCompare(right.kickoff);
 }
 
+function dedupeMatchesById(matches: FootballMatch[]): FootballMatch[] {
+  const byId = new Map<string, FootballMatch>();
+
+  for (const match of matches) {
+    const existing = byId.get(match.id);
+    byId.set(match.id, shouldPreferMatch(match, existing) ? match : existing ?? match);
+  }
+
+  return [...byId.values()];
+}
+
+function shouldPreferMatch(candidate: FootballMatch, existing: FootballMatch | undefined): boolean {
+  if (!existing) {
+    return true;
+  }
+
+  if (existing.leagueSlug === 'all' && candidate.leagueSlug !== 'all') {
+    return true;
+  }
+
+  if (candidate.leagueSlug === 'all' && existing.leagueSlug !== 'all') {
+    return false;
+  }
+
+  return matchCompletenessScore(candidate) >= matchCompletenessScore(existing);
+}
+
+function matchCompletenessScore(match: FootballMatch): number {
+  return [
+    match.leagueSlug,
+    match.leagueName,
+    match.leagueShortName,
+    match.kickoff,
+    match.homeScore,
+    match.awayScore,
+    match.homeTeam.logoUrl,
+    match.awayTeam.logoUrl,
+    match.venue
+  ].filter((value) => value !== undefined && value !== '').length;
+}
+
 function handleRefetch(): void {
   void refetch();
+  supplementalScoreboards.refetchAll();
 }
 </script>

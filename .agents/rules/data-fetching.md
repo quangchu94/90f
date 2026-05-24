@@ -64,6 +64,8 @@
 - Livescore uses one current-date all-soccer scoreboard query by default: `['live-scoreboard', YYYYMMDD]`.
 - Livescore filters normalized matches to `in_progress` and `halftime` statuses before rendering.
 - Livescore groups visible matches by normalized league and supports `all`, `favorites`, and single favorite-league filters.
+- Livescore league filters must use concrete normalized league slugs; if all-soccer data still has unresolved `all` matches, filtered views may fetch the active league-specific scoreboards as supplemental data.
+- Livescore status badges should show `Live` for first-half and second-half in-progress matches; reserve `Nghỉ giữa hiệp` for explicit halftime statuses.
 - Livescore should keep previously fetched matches visible when refetch fails.
 - Livescore polling must stop when the page is not visible or when there are no live matches.
 

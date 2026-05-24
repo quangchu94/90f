@@ -44,17 +44,34 @@ import type {
   EspnTeamsResponse
 } from './espnTypes';
 
+const ESPN_SOCCER_LEAGUE_ID_SLUGS: Record<string, string> = {
+  '700': 'eng.1'
+};
+
 export function mapScoreboardResponse(
   response: EspnScoreboardResponse,
   leagueSlug: string
 ): FootballMatch[] {
-  const fallbackLeague = response.leagues?.length === 1 ? response.leagues[0] : getLeagueBySlug(leagueSlug);
+  const fallbackLeague = getScoreboardFallbackLeague(response, leagueSlug);
 
   return (response.events ?? []).map((event) => {
     const eventLeague = resolveEventLeague(event, fallbackLeague, leagueSlug);
 
     return mapEventToFootballMatch(event, eventLeague.slug, eventLeague.name, eventLeague.shortName);
   });
+}
+
+function getScoreboardFallbackLeague(
+  response: EspnScoreboardResponse,
+  leagueSlug: string
+): { slug?: string; name?: string; displayName?: string; abbreviation?: string; shortName?: string } {
+  const responseLeague = response.leagues?.length === 1 ? response.leagues[0] : undefined;
+
+  if (responseLeague?.slug) {
+    return responseLeague;
+  }
+
+  return leagueSlug === 'all' ? { slug: leagueSlug, name: leagueSlug } : getLeagueBySlug(leagueSlug);
 }
 
 export function mapSummaryResponse(
@@ -250,6 +267,8 @@ function resolveEventLeague(
     event.leagues?.find((league) => league.slug) ??
     (event.league?.slug ? event.league : undefined) ??
     inferLeagueFromEventLinks(event) ??
+    inferLeagueFromEventSeason(event) ??
+    inferLeagueFromEventUid(event) ??
     inferLeagueFromEventText(event) ??
     (event.sourceLeague?.slug ? event.sourceLeague : undefined) ??
     fallbackLeague;
@@ -304,48 +323,82 @@ function inferLeagueFromEventText(event: EspnEvent): EspnEvent['league'] | undef
   return { slug: league.slug, name: league.name, abbreviation: league.shortName };
 }
 
-function inferStaticLeagueSlugFromText(text: string): string | undefined {
-  if (!text) {
+function inferLeagueFromEventSeason(event: EspnEvent): EspnEvent['league'] | undefined {
+  const text = [
+    event.season?.slug,
+    event.season?.displayName,
+    event.season?.name,
+    event.seasonType?.displayName,
+    event.seasonType?.name
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const slug = inferStaticLeagueSlugFromText(text);
+
+  if (!slug) {
     return undefined;
   }
 
-  if (text.includes('uefa conference league')) {
+  const league = getLeagueBySlug(slug);
+  return { slug: league.slug, name: league.name, abbreviation: league.shortName };
+}
+
+function inferLeagueFromEventUid(event: EspnEvent): EspnEvent['league'] | undefined {
+  const leagueId = event.uid?.match(/~l:(\d+)(?:~|$)/)?.[1];
+  const slug = leagueId ? ESPN_SOCCER_LEAGUE_ID_SLUGS[leagueId] : undefined;
+
+  if (!slug) {
+    return undefined;
+  }
+
+  const league = getLeagueBySlug(slug);
+  return { slug: league.slug, name: league.name, abbreviation: league.shortName };
+}
+
+function inferStaticLeagueSlugFromText(text: string): string | undefined {
+  const normalizedText = normalizeText([text]);
+
+  if (!normalizedText) {
+    return undefined;
+  }
+
+  if (normalizedText.includes('uefa conference league')) {
     return 'uefa.europa.conf';
   }
 
-  if (text.includes('uefa champions league')) {
+  if (normalizedText.includes('uefa champions league')) {
     return 'uefa.champions';
   }
 
-  if (text.includes('uefa europa league')) {
+  if (normalizedText.includes('uefa europa league')) {
     return 'uefa.europa';
   }
 
-  if (text.includes('leagues cup')) {
+  if (normalizedText.includes('leagues cup')) {
     return 'concacaf.leagues.cup';
   }
 
-  if (text.includes('premier league')) {
+  if (normalizedText.includes('premier league')) {
     return 'eng.1';
   }
 
-  if (text.includes('spanish laliga') || text.includes('la liga') || text.includes('laliga')) {
+  if (normalizedText.includes('spanish laliga') || normalizedText.includes('la liga') || normalizedText.includes('laliga')) {
     return 'esp.1';
   }
 
-  if (text.includes('german bundesliga') || text.includes('bundesliga')) {
+  if (normalizedText.includes('german bundesliga') || normalizedText.includes('bundesliga')) {
     return 'ger.1';
   }
 
-  if (text.includes('italian serie a') || text.includes('serie a')) {
+  if (normalizedText.includes('italian serie a') || normalizedText.includes('serie a')) {
     return 'ita.1';
   }
 
-  if (text.includes('french ligue 1') || text.includes('ligue 1')) {
+  if (normalizedText.includes('french ligue 1') || normalizedText.includes('ligue 1')) {
     return 'fra.1';
   }
 
-  if (text.includes('fifa world cup') || text.includes('world cup')) {
+  if (normalizedText.includes('fifa world cup') || normalizedText.includes('world cup')) {
     return 'fifa.world';
   }
 
@@ -924,7 +977,9 @@ export function normalizeStatus(status: EspnEventStatus | undefined, hasComplete
   }
 
   if (state === 'in') {
-    return name?.includes('half') ? 'halftime' : 'in_progress';
+    return isHalftimeStatus(name, description, status?.type?.detail, status?.type?.shortDetail)
+      ? 'halftime'
+      : 'in_progress';
   }
 
   if (state === 'pre') {
@@ -936,6 +991,25 @@ export function normalizeStatus(status: EspnEventStatus | undefined, hasComplete
   }
 
   return 'unknown';
+}
+
+function isHalftimeStatus(
+  name: string | undefined,
+  description: string | undefined,
+  detail: string | undefined,
+  shortDetail: string | undefined
+): boolean {
+  const normalizedName = name?.toLowerCase();
+  const normalizedDescription = description?.toLowerCase();
+  const normalizedDetail = detail?.trim().toLowerCase();
+  const normalizedShortDetail = shortDetail?.trim().toLowerCase();
+
+  return (
+    normalizedName === 'status_halftime' ||
+    normalizedDescription === 'halftime' ||
+    normalizedDetail === 'ht' ||
+    normalizedShortDetail === 'ht'
+  );
 }
 
 function getStatusText(status: EspnEventStatus | undefined, normalizedStatus: MatchStatus): string {

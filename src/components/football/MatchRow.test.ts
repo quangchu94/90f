@@ -35,6 +35,17 @@ describe('MatchRow', () => {
     expect(finished.text()).toContain('FT');
   });
 
+  it('renders explicit halftime as a halftime badge', () => {
+    const wrapper = mount(MatchRow, {
+      props: { match: { ...makeMatch('halftime', 1, 2), statusText: 'HT' } },
+      global: { stubs: { RouterLink: RouterLinkStub } }
+    });
+
+    expect(wrapper.text()).toContain('Nghỉ giữa hiệp');
+    expect(wrapper.text()).toContain('HT');
+    expect(wrapper.text()).not.toContain('Live');
+  });
+
   it('renders kickoff date when requested', () => {
     const wrapper = mount(MatchRow, {
       props: { match: makeMatch('scheduled'), showDate: true },

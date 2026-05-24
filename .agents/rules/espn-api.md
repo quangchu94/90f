@@ -26,6 +26,8 @@ Use these endpoint families:
 - Use `YYYYMMDD` for date query params.
 - Livescore should prefer `/sports/soccer/all/scoreboard` for the current local date to avoid fan-out across leagues.
 - Livescore must map per-event `event.leagues[0]` when available and fall back safely when ESPN omits league metadata.
+- All-soccer scoreboard can omit `event.league`, `event.leagues`, and concrete `response.leagues`; before falling back to `all`, infer canonical league from `event.season.slug`/season text and ESPN UID league ids such as `s:600~l:700~e:*` -> `eng.1`.
+- Soccer statuses named `STATUS_FIRST_HALF` or `STATUS_SECOND_HALF` are active live play and must map to `in_progress`; only explicit `STATUS_HALFTIME`, `Halftime`, or `HT` should map to `halftime`.
 - Team fixture schedule fallback may return per-event `event.league` instead of `event.leagues`; treat `event.league.slug` as canonical before any source endpoint fallback.
 - Event links can expose canonical league slugs through `leagueAbbrev` or `/league/{slug}` URLs and may be used when structured event league fields are missing.
 - Standings for soccer should use `/apis/v2/`, not `/apis/site/v2/`.
