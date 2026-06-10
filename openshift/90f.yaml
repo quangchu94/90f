@@ -1,0 +1,102 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: 90f
+  labels:
+    app: 90f
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: 90f
+  labels:
+    app: 90f
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/quangchu94/90f.git
+      ref: main
+    sourceSecret:
+      name: github-openshift-local-token
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 90f:latest
+  triggers:
+    - type: ConfigChange
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 90f
+  labels:
+    app: 90f
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: 90f
+  template:
+    metadata:
+      labels:
+        app: 90f
+    spec:
+      containers:
+        - name: 90f
+          image: image-registry.openshift-image-registry.svc:5000/90f-dev/90f:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-90f
+  labels:
+    app: 90f
+spec:
+  selector:
+    app: 90f
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: 90f
+  labels:
+    app: 90f
+spec:
+  to:
+    kind: Service
+    name: app-90f
+  port:
+    targetPort: http
